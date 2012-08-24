@@ -4,12 +4,12 @@
   views: {
     '<%= id %>': {
       type: 'dialog',
+      title: '<%= name %>',
       displayName: '<%= name %>',
-      initialize: function() {
-        this.inherited('initialize');
-      },
-      render: function() {
-        this.$el.find('.body').html('<h1>Hello World!</h1>');
+      initialize: function(options) {
+        options = options || {};
+        this.inherited('initialize', options);
+        $(this.bodyEl).html('<div class="inner"><p></p></div>');
       }
     }
   },
