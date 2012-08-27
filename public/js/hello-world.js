@@ -4,12 +4,12 @@
   views: {
     'hello-world': {
       type: 'dialog',
+      title: 'Hello World',
       displayName: 'Hello World',
-      initialize: function() {
-        this.inherited('initialize');
-      },
-      render: function() {
-        $(this.bodyEl).find('.dialog-body').html('<h1>Hello World!</h1>');
+      initialize: function(options) {
+        options = options || {};
+        this.inherited('initialize', options);
+        $(this.bodyEl).html('<div class="inner"><p></p></div>');
       }
     }
   },

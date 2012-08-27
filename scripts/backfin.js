@@ -45,6 +45,7 @@ var utils = {
 
 var BackfinServer = function(options) {
   options = options || {};
+  this.backfinCli = options.backfinCli;
   this.watchDir = options.watchDir || (__dirname + '/../public');
   this.watchDir = this.watchDir.replace(/scripts\/\.\.\//, '');
   this.changeChannels = {'less': {}, 'views': {}, 'plugins': {}}
@@ -117,6 +118,9 @@ BackfinServer.prototype._sendChanges = function(path, relativePath, mtime) {
   fs.readFile(path, 'utf-8', function (err, data) {
     this.changeChannels[channel][relativePath].data = data;
     this.changesToFlush = true;
+    if(this.backfinCli) {
+      this.backfinCli.fileChanged(relativePath);
+    }
   }.bind(this));
 };
 
@@ -198,6 +202,26 @@ BackfinCli.prototype.helpCmd = function() {
   console.log("");
 };
 
+BackfinCli.prototype.fileChanged = function(path) {
+  var prompt = 'backfin> ';
+  var i = prompt.length-1;
+  var animatePrompt = function() {
+    if(i <= 0) {
+      this.backfinConsole.setPrompt(prompt);
+      this.backfinConsole.prompt();
+      return;
+    }
+    var nPrompt = prompt.concat();
+    nPrompt = nPrompt.slice(0, i-1)+'-'+nPrompt.slice(i);
+    this.backfinConsole.setPrompt(nPrompt);
+    this.backfinConsole.prompt();
+    i--;
+    setTimeout(animatePrompt.bind(this), 50);
+  }.bind(this);
+  
+  animatePrompt();
+};
+
 BackfinCli.prototype.listen = function() {
   this.backfinConsole = readline.createInterface(process.stdin, process.stdout);
   this.backfinConsole.setPrompt('backfin> ');
@@ -226,11 +250,11 @@ BackfinCli.prototype.listen = function() {
   }.bind(this));
 };
 
-var backfinServer = new BackfinServer();
+var backfinCli = new BackfinCli();
+var backfinServer = new BackfinServer({backfinCli: backfinCli});
 backfinServer.listenHttp();
 backfinServer.listenFs();
 
 console.log('Streaming code from directory '+backfinServer.watchDir);
 
-var backfinCli = new BackfinCli();
 backfinCli.listen();
