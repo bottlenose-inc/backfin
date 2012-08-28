@@ -45,7 +45,7 @@
     ok(channels[TEST_CHANNEL], "should allow an event to be subscribed");
   });
 
-  asyncTest('start', function(){
+  test('start', function(){
     var el = document.createElement('div');
 
     expect(3);
@@ -59,10 +59,6 @@
       channel : "hello-world"
     });
     
-    
-    setTimeout(function(){  
-      start()
-    })
     /*
     it('should throw an error if all the params are not specified', function () {});
     it('should throw an error if all the params are not the correct type', function () {});
@@ -71,8 +67,6 @@
     it('should trigger a requirejs error if the widget does not exist', function (){});
     */ 
   })
-
-
 
   return;
   describe('Mediator', function () {

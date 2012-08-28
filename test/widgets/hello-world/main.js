@@ -3,4 +3,4 @@ define(['backfin-sandbox'], function(sandbox) {
     el.innerHTML = 'Hello World';
     sandbox.publish('load', 'hello-world');
   }
-})
+});
