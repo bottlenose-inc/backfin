@@ -1,6 +1,6 @@
-define(function(){
-  console.log(123123);
+define(['backfin-sandbox'], function(sandbox) {
   return function(el){
-    console.log(el);
+    el.innerHTML = 'Hello World';
+    sandbox.publish('load', 'hello-world');
   }
 })

@@ -180,7 +180,6 @@ define(['jquery', 'underscore'],function($, _) {
       }
 
       require([widgetsPath + '/' + file + '/main'], function(main) {
-        console.log(main);
         try {
           main(element);
         } catch (e) {

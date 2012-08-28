@@ -45,14 +45,24 @@
     ok(channels[TEST_CHANNEL], "should allow an event to be subscribed");
   });
 
-  test('start', function(){
+  asyncTest('start', function(){
     var el = document.createElement('div');
+
+    expect(3);
+
+    mediator.subscribe('load', '', function(event){
+      equal(event,'hello-world');
+    }, {});
+
     mediator.start({
       element : el, 
       channel : "hello-world"
     });
-
     
+    
+    setTimeout(function(){  
+      start()
+    })
     /*
     it('should throw an error if all the params are not specified', function () {});
     it('should throw an error if all the params are not the correct type', function () {});
