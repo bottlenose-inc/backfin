@@ -9,6 +9,8 @@
   <script src="vendor/require-2.0.6.js"></script>
   <script>
     "use strict";
+    QUnit.config.reorder = false;
+
     require.config({
       // [RequireJS](http://requirejs.org/) 2.0+ plus has error callbacks (errbacks)
       // which provide per-require error handling. To utilize this feature
@@ -44,8 +46,10 @@
       window.sandbox = sandbox;
     })
   </script>
+
 </head>
 <body>
+  <script src="core.js"></script>
   <div id="qunit"></div>
 </body>
 </html>
