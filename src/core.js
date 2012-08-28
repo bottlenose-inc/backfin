@@ -171,7 +171,7 @@ define(['jquery', 'underscore'],function($, _) {
     var promises = [];
 
     function load(file, element) {
-      var dfd = $.deferred();
+      var dfd = new $.Deferred();
       var widgetsPath = core.getWidgetsPath();
       var requireConfig = require.s.contexts._.config;
 
@@ -180,6 +180,7 @@ define(['jquery', 'underscore'],function($, _) {
       }
 
       require([widgetsPath + '/' + file + '/main'], function(main) {
+        console.log(main);
         try {
           main(element);
         } catch (e) {

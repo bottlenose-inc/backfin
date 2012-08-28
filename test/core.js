@@ -45,6 +45,23 @@
     ok(channels[TEST_CHANNEL], "should allow an event to be subscribed");
   });
 
+  test('start', function(){
+    var el = document.createElement('div');
+    mediator.start({
+      element : el, 
+      channel : "hello-world"
+    });
+
+    
+    /*
+    it('should throw an error if all the params are not specified', function () {});
+    it('should throw an error if all the params are not the correct type', function () {});
+    it('should load (require) a widget that corresponds with a channel', function () {});
+    it('should call every callback for the channel, within the correct context', function () {});
+    it('should trigger a requirejs error if the widget does not exist', function (){});
+    */ 
+  })
+
 
 
   return;
@@ -136,11 +153,7 @@
     });
 
     xdescribe('start', function() {
-      it('should throw an error if all the params are not specified', function () {});
-      it('should throw an error if all the params are not the correct type', function () {});
-      it('should load (require) a widget that corresponds with a channel', function () {});
-      it('should call every callback for the channel, within the correct context', function () {});
-      it('should trigger a requirejs error if the widget does not exist', function (){});
+    
     });
 
     xdescribe('stop', function() {
