@@ -5,7 +5,7 @@
 // Note: Handling permissions/security is optional here
 // The permissions check can be removed
 // to just use the mediator directly.
-define(['backbfin-core'], function(mediator) {
+define(['backfin-core'], function(mediator) {
   "use strict";
   
   var sandbox = {};
