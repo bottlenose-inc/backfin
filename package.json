@@ -24,7 +24,7 @@
     "grunt": "~0.3.12",
     "grunt-requirejs": "~0.2.9",
     "grunt-contrib": "~0.1.7"
-  }
+  },
   "engines": [
     "node >=0.6.0"
   ],
