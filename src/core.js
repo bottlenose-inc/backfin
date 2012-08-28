@@ -9,7 +9,7 @@
 // * [Nicholas Zakas: Scalable JavaScript Application Architecture](http://www.youtube.com/watch?v=vXjVFPosQHw&feature=youtube_gdata_player)
 // * [Writing Modular JavaScript: New Premium Tutorial](http://net.tutsplus.com/tutorials/javascript-ajax/writing-modular-javascript-new-premium-tutorial/)
 // include 'deferred' if using zepto
-define('backfin-core',function($, _) {
+define('backfin-core', function() {
   "use strict";
 
   var core = {}; // Mediator object
@@ -183,7 +183,7 @@ define('backfin-core',function($, _) {
         try {
           main(element);
         } catch (e) {
-          console.error(e);
+          console.error(e.stack);
         }
         dfd.resolve();
       }, function(err) {
