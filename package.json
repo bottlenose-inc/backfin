@@ -28,5 +28,5 @@
   "engines": [
     "node >=0.6.0"
   ],
-  "main": "./lib/middleware.js"
+  "main": "./lib/index.js"
 }
