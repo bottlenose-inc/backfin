@@ -12,4 +12,7 @@ var backfinServer = new BackfinServer({
 backfinServer.listenHttp();
 backfinServer.listenFs();
 
-backfinCli.listen();
+backfinCli.parseArgv(function(err) {
+  err && BackfinCli.listen();
+  process.exit();
+});
