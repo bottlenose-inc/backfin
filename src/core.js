@@ -14,6 +14,7 @@ define('backfin-core', function() {
 
   var core = {}; // Mediator object
   var channels = {}; // Loaded modules and their callbacks
+  var plugins = {};
   var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
@@ -187,6 +188,7 @@ define('backfin-core', function() {
       require(['backfin-sandbox', widgetsPath + '/' + file + '/main'], function(Sandbox, main) {
         try {
           var sandbox = new Sandbox(file, element, coreOptions);
+          plugins[file] = sandbox;
           main(sandbox, element);
         } catch (e) {
           console.error(e.stack);
@@ -280,7 +282,17 @@ define('backfin-core', function() {
   };
 
   core.getActivityPlugins = function(){
-
+    var results = [], key, plugin;
+    for (key in plugins) {
+      if (plugins.hasOwnProperty(key)) {
+        plugin = plugins[key];
+        results.push({ 
+          id : key, 
+          views : plugin._registeredViews, 
+          models : plugins._registeredModels });
+      }
+    }
+    return results;
   }
 
   return core;
