@@ -15,6 +15,7 @@ define('backfin-core', function() {
   var core = {}; // Mediator object
   var channels = {}; // Loaded modules and their callbacks
   var plugins = {};
+  var manifests = {};
   var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
@@ -65,7 +66,9 @@ define('backfin-core', function() {
 
   core.config = function(options) {
     coreOptions = options;
+    manifests = coreOptions.manifests;
   };
+
 
   // Subscribe to an event
   //
@@ -180,14 +183,18 @@ define('backfin-core', function() {
       var dfd = new $.Deferred();
       var widgetsPath = core.getWidgetsPath();
       var requireConfig = require.s.contexts._.config;
+      var manifest = manifests[file];
 
       if (requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
         widgetsPath = requireConfig.paths.widgets;
       }
 
-      require(['backfin-sandbox', widgetsPath + '/' + file + '/main'], function(Sandbox, main) {
+      var paths = ['backfin-sandbox', widgetsPath + '/' + file + '/main'];
+      if(!manifest) paths.push('text!' + widgetsPath + '/' + file + '/manifest.json');
+      
+      require(paths, function(Sandbox, main, manifestText) {
         try {
-          var sandbox = new Sandbox(file, element, coreOptions);
+          var sandbox = new Sandbox(file, element, coreOptions, manifest || JSON.parse(manifestText.trim() || '{}'));
           plugins[file] = sandbox;
           main(sandbox, element);
         } catch (e) {
@@ -290,7 +297,7 @@ define('backfin-core', function() {
     return channels;
   };
 
-  core.onError = function(err, channel){
+  core.onError = function(err, channel) {
     console.error('plugin :' + channel + '\n' + err.stack);
   }
 
