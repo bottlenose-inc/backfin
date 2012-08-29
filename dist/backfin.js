@@ -9,7 +9,7 @@
 // * [Nicholas Zakas: Scalable JavaScript Application Architecture](http://www.youtube.com/watch?v=vXjVFPosQHw&feature=youtube_gdata_player)
 // * [Writing Modular JavaScript: New Premium Tutorial](http://net.tutsplus.com/tutorials/javascript-ajax/writing-modular-javascript-new-premium-tutorial/)
 // include 'deferred' if using zepto
-define(['jquery', 'underscore']function($, _) {
+define('backfin-core', function() {
   "use strict";
 
   var core = {}; // Mediator object
@@ -171,7 +171,7 @@ define(['jquery', 'underscore']function($, _) {
     var promises = [];
 
     function load(file, element) {
-      var dfd = $.deferred();
+      var dfd = new $.Deferred();
       var widgetsPath = core.getWidgetsPath();
       var requireConfig = require.s.contexts._.config;
 
@@ -183,7 +183,7 @@ define(['jquery', 'underscore']function($, _) {
         try {
           main(element);
         } catch (e) {
-          console.error(e);
+          console.error(e.stack);
         }
         dfd.resolve();
       }, function(err) {
@@ -276,11 +276,64 @@ define(['jquery', 'underscore']function($, _) {
   return core;
 
 });
-// ## Hotswap
-// Implements the magic 
-define([], function() {
+define('backfin-hotswap', ['backfin-core'], function(){
+  console.log(1);
+  
+  function Hotswap(options) {
+    options || (options = {});
+    options.rootPath =  options.rootPath || 'js/';
+    options.server =  options.server || 'localhost';
+    this.options = options;
+    if(window.location.href.indexOf('local') != -1) {
+      this._connect();
+    }
+  }
 
+  Hotswap.prototype._connect = function() {
+    var socket = new WebSocket('ws://' + this.options.server.replace('http', ''));
+    var self = this;
+    socket.onclose = function(){
+      console.log('[Hotswap] socket '+socket.readyState+' (Closed)');
+      setTimeout(function(){
+        self._connect();
+      }, 1000);
+      delete socket;
+    };
+    socket.onmessage = self._parseMessage.bind(this);
+  }
+
+  Hotswap.prototype._parseMessage = function(msg) {
+    var str = msg.data, controlChar = str[0], data = str.slice(1);
+    switch(controlChar){
+      case 'c':
+      if(str.indexOf('less/') != -1) {
+        $('link').each(function(i,link) {
+          console.log(link);
+          if(link.href.indexOf('less') != -1) {
+            link.href = link.href.replace(/\?.+/ig, 't=' + Date.now());
+          }
+        })
+        return;
+      }
+      var path = str.slice(1).replace(this.options.rootPath, '').replace('.js','');
+      this._reloadView(path);
+      break;
+    }
+  }
+
+  Hotswap.prototype._reloadView = function(path) {
+    requirejs.undef(path);
+    require([path], function(newView){
+      return newView.prototype._onHotswap(newView);
+    });
+  }
+
+  window.bfHotswap = new Hotswap();
 });
+
+
+
+
 // ## Sandbox
 // Implements the sandbox pattern and set up an standard interface for modules.
 // This is a subset of the mediator functionality.
@@ -288,7 +341,7 @@ define([], function() {
 // Note: Handling permissions/security is optional here
 // The permissions check can be removed
 // to just use the mediator directly.
-define(['backbfin-core'], function(mediator) {
+define('backfin-sandbox',['backfin-core'], function(mediator) {
   "use strict";
   
   var sandbox = {};
