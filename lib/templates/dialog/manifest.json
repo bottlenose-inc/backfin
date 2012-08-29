@@ -1,5 +1,5 @@
 {
-  name: '<%= name %>',
-  description: '',
-  builtIn: false
+  "name": "<%= name %>",
+  "description": "",
+  "builtIn": false
 }

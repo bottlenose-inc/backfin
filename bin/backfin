@@ -15,6 +15,9 @@ backfinServer.listenHttp();
 backfinServer.listenFs();
 
 backfinCli.parseArgv(function(err) {
-  err && BackfinCli.listen();
-  process.exit();
+  if(err) {
+  	backfinCli.listen();
+  } else {
+  	process.exit(0);
+  }
 });
