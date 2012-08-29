@@ -18,7 +18,7 @@ define('backfin-core', function() {
   var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
-  var WIDGETS_PATH = '../../../widgets'; // Path to widgets
+  var WIDGETS_PATH = '../../../plugins'; // Path to widgets
 
  
   // The bind method is used for callbacks.
@@ -191,7 +191,7 @@ define('backfin-core', function() {
           plugins[file] = sandbox;
           main(sandbox, element);
         } catch (e) {
-          console.error(e.stack);
+          core.onError(e, file);
         }
         dfd.resolve();
       }, function(err) {
@@ -228,7 +228,7 @@ define('backfin-core', function() {
   //
   // * **param:** {string} channel Event name
   // * **param:** {string} el Element name
-  core.stop = function(channel, el) {
+  core.stop = function(channel) {
     var file = decamelize(channel);
 
     for (var ch in channels) {
@@ -240,12 +240,21 @@ define('backfin-core', function() {
         }
       }
     }
-    // Remove all modules under a widget path (e.g widgets/todos)
-    core.unload('widgets/' + file);
 
-    // Remove widget descendents, unbinding any event handlers
-    // attached to children within the widget.
-    $(el).children().remove();
+    // Remove all modules under a widget path (e.g widgets/todos)
+    core.unload('plugins/' + file);
+
+    var plugin = plugins[channel];
+    if(!plugin) return console.log('plugin not found');
+
+    plugin._registeredViews.forEach(function(view){
+      view && view.destroy ? view.destroy() : view.remove();
+    });
+
+    plugin._registeredModels.forEach(function(model){
+      model && model.destroy && model.destroy(); 
+    });
+    delete plugins[channel];
   };
 
   // Undefine/unload a module, resetting the internal state of it in require.js
@@ -280,6 +289,10 @@ define('backfin-core', function() {
   core.getChannels = function() {
     return channels;
   };
+
+  core.onError = function(err, channel){
+    console.error('plugin :' + channel + '\n' + err.stack);
+  }
 
   core.getActivityPlugins = function(){
     var results = [], key, plugin;
