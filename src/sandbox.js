@@ -12,17 +12,23 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
     options = options || {};
     this.channel = channel;
     
-    var registerView = this.registerView,
-        registerModel = this.registerModel;
+    var self = this;
+    var registerView = this.registerView.bind(this),
+        registerModel = this.registerModel.bind(this);
     
+    this._registeredViews = [];
+    this._registeredModels = [];
+
     this.views = {};
     this.models = {};
+
     this.View = Backbone.View.extend({
       constructor : function(){
         registerView(this);
         this.initialize.apply(this, arguments);
       }
     });
+
     this.Model = Backbone.Model.extend({
       constructor : function(){
         registerModel(this);
@@ -38,8 +44,7 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
         }
       });
     }
-    var self = this;
-
+    
     Object.keys(options).forEach(function(key){
       switch(key) {
         case 'models':
@@ -49,6 +54,7 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
         break;
         case 'views' :
           Object.keys(options.views).forEach(function(k) {
+            console.log(k, options.views[k], registerView);
             self.views[k] = configure(registerView, options.views[k]);
           });
         break;
@@ -79,12 +85,12 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
   };
 
   Sandbox.prototype.registerView = function(view) {
-    //mediator.registerView(this.channel, view);
+    this._registeredViews.push(view);
   };
 
   Sandbox.prototype.registerModel = function(model) {
-
-  }
+    this._registeredModels.push(model);
+  };
 
   return Sandbox;
 });
