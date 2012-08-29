@@ -4,10 +4,12 @@ var utils = require(__dirname + '/../lib/utils'),
   BackfinCli = require(__dirname + '/../lib/cli'),
   BackfinServer = require(__dirname + '/../lib/server');
 
-var backfinCli = new BackfinCli();
+var backfinCli = new BackfinCli({
+  pluginDir: __dirname + '/../public'
+});
 var backfinServer = new BackfinServer({
   backfinCli: backfinCli,
-  watchDir: __dirname + '/../public'
+  pluginDir: __dirname + '/../public'
 });
 backfinServer.listenHttp();
 backfinServer.listenFs();
