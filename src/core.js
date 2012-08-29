@@ -191,7 +191,7 @@ define('backfin-core', function() {
           plugins[file] = sandbox;
           main(sandbox, element);
         } catch (e) {
-          console.error(e.stack);
+          core.onError(e, file);
         }
         dfd.resolve();
       }, function(err) {
@@ -244,7 +244,6 @@ define('backfin-core', function() {
     // Remove all modules under a widget path (e.g widgets/todos)
     core.unload('plugins/' + file);
 
-
     var plugin = plugins[channel];
     if(!plugin) return console.log('plugin not found');
 
@@ -290,6 +289,10 @@ define('backfin-core', function() {
   core.getChannels = function() {
     return channels;
   };
+
+  core.onError = function(err, channel){
+    console.error('plugin :' + channel + '\n' + err.stack);
+  }
 
   core.getActivityPlugins = function(){
     var results = [], key, plugin;
