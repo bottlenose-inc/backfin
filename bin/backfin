@@ -12,6 +12,7 @@ var backfinServer = new BackfinServer({
 backfinServer.listenHttp();
 backfinServer.listenFs();
 
-console.log('Streaming code from directory '+backfinServer.watchDir);
-
-backfinCli.listen();
+backfinCli.parseArgv(function(err) {
+  err && BackfinCli.listen();
+  process.exit();
+});
