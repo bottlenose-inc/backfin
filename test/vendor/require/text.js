@@ -8,7 +8,7 @@
  define: false, window: false, process: false, Packages: false,
  java: false, location: false */
 
-define(['module'], function (module) {
+define('text', ['module'], function (module) {
   'use strict';
 
   var progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'],

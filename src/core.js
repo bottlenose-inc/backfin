@@ -66,7 +66,7 @@ define('backfin-core', function() {
 
   core.config = function(options) {
     coreOptions = options;
-    manifests = coreOptions.manifests;
+    manifests = coreOptions.manifests || {};
   };
 
 
