@@ -295,6 +295,22 @@ define('backfin-core', function() {
     }
   };
 
+  core.hotswapByPath = function(path, isNew) {
+    if(path.match(/manifest\.json$/) && isNew) {
+      var md = path.match(/\/(.+)\/manifest\.json/);
+      if(!md || !md[1]) { return; }
+      console.log("Hotswapping [new] plugin: ", plugin.id);
+      core.start(md[1]);
+    } else {
+      core.getActivityPlugins().forEach(function(plugin) { 
+        var id = path.slice(1, plugin.id.length+1);
+        if(id == plugin.id) {
+          console.log("Hotswapping [existing] plugin: ", plugin.id);
+        }
+      });
+    }
+  };
+
   core.getChannels = function() {
     return channels;
   };

@@ -60,22 +60,11 @@ define('backfin-hotswap', ['backfin-core'], function(){
   
   var processChanges = function(res) {
     if(res.less && _.keys(res.less).length && less) { less.refresh(); }
-    if(res.views) {
-      Object.keys(res.views).forEach(function(key){
-        console.log("Hotswapping view ["+key+"]")
-        try {
-          if(res.views[key] && res.views[key].data) eval(res.views[key].data);
-        } catch(e) {
-          console.error(e.stack);
-        }
-      })
-    }
-    if(res.plugins && _.keys(res.plugins) && bn.plugins && bn.plugins.controller.isReady) {      
+    if(res.plugins && _.keys(res.plugins) && window.backfin) {      
       try {
         _.keys(res.plugins).forEach(function(key) {
           if(res.plugins[key].data) {
-              console.log("Hotswapping plugin ["+key+"]")
-              bn.plugins.controller.hotswap(res.plugins[key].data, {allowNew: true});
+            backfin.hotswapByPath(res.plugins[key].path, res.plugins[key].isNew);
           }
           if(hotswapErrorDialog) {
             hotswapErrorDialog.close();
@@ -116,7 +105,7 @@ define('backfin-hotswap', ['backfin-core'], function(){
     def.error(function() {
       setTimeout(function() {
         startCodeStreaming();
-      }, 300)
+      }, 1000)
     });
   };
   
