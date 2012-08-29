@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var utils = require(__dirname + '/../lib/utils'),
   BackfinCli = require(__dirname + '/../lib/cli'),
   BackfinServer = require(__dirname + '/../lib/server');

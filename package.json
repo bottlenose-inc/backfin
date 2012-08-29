@@ -25,6 +25,9 @@
     "grunt-contrib": "~0.1.7",
     "grunt-bump": "*"
   },
+  "bin": {
+    "backfin": "./bin/backfin"
+  },
   "engines": [
     "node >=0.6.0"
   ],
