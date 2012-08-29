@@ -8,32 +8,83 @@
 define('backfin-sandbox',['backfin-core'], function(mediator) {
   "use strict";
   
-  var sandbox = {};
+  function Sandbox(channel, el, options) {
+    options = options || {};
+    this.channel = channel;
+    
+    var registerView = this.registerView,
+        registerModel = this.registerModel;
+    
+    this.views = {};
+    this.models = {};
+    this.View = Backbone.View.extend({
+      constructor : function(){
+        registerView(this);
+        this.initialize.apply(this, arguments);
+      }
+    });
+    this.Model = Backbone.Model.extend({
+      constructor : function(){
+        registerModel(this);
+        this.initialize.apply(this, arguments);
+      }
+    });
+
+    function configure(registerFn, object) {
+      return object.extend({
+        constructor : function(){
+          registerFn(this);
+          this.initialize.apply(this, arguments);
+        }
+      });
+    }
+    var self = this;
+
+    Object.keys(options).forEach(function(key){
+      switch(key) {
+        case 'models':
+          Object.keys(options.models).forEach(function(k) {
+            self.models[k] = configure(registerModel, options.models[k]);
+          });
+        break;
+        case 'views' :
+          Object.keys(options.views).forEach(function(k) {
+            self.views[k] = configure(registerView, options.views[k]);
+          });
+        break;
+      }
+    });
+  }
 
   // * **param:** {string} subscriber Module name
   // * **param:** {string} channel Event name
   // * **param:** {object} callback Module
-  sandbox.subscribe = function(channel, subscriber, callback, context) {
-    //if (permissions.validate(channel, subscriber)) {
-      mediator.subscribe(channel, subscriber, callback, context || this);
-    //}
-  };
-
+  Sandbox.prototype.subscribe = function(){
+    mediator.subscribe(channel, subscriber, callback, context || this);
+  }
   // * **param:** {string} channel Event name
-  sandbox.publish = function(channel) {
+  Sandbox.prototype.publish = function(channel) {
     mediator.publish.apply(mediator, arguments);
-  };
+  }
 
   // * **param:** {Object/Array} an array with objects or single object containing channel and element
-  sandbox.start = function(list) {
+  Sandbox.prototype.start = function(list) {
     mediator.start.apply(mediator, arguments);
-  };
+  }
 
   // * **param:** {string} channel Event name
   // * **param:** {string} el Element name
-  sandbox.stop = function(channel, el) {
+  Sandbox.prototype.stop = function(channel, el) {
     mediator.stop.apply(mediator, arguments);
   };
 
-  return sandbox;
+  Sandbox.prototype.registerView = function(view) {
+    //mediator.registerView(this.channel, view);
+  };
+
+  Sandbox.prototype.registerModel = function(model) {
+
+  }
+
+  return Sandbox;
 });
