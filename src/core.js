@@ -193,8 +193,10 @@ define('backfin-core', function() {
       if(!manifest) paths.push('text!' + widgetsPath + '/' + file + '/manifest.json');
       
       require(paths, function(Sandbox, main, manifestText) {
+        manifest =  manifest || JSON.parse(manifestText || '{}');
+        manifest.id = element;
         try {
-          var sandbox = new Sandbox(file, element, coreOptions, manifest || JSON.parse(manifestText.trim() || '{}'));
+          var sandbox = new Sandbox(file, element, coreOptions, manifest);
           plugins[file] = sandbox;
           main(sandbox, element);
         } catch (e) {
