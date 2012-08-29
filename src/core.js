@@ -14,6 +14,7 @@ define('backfin-core', function() {
 
   var core = {}; // Mediator object
   var channels = {}; // Loaded modules and their callbacks
+  var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
   var WIDGETS_PATH = '../../../widgets'; // Path to widgets
@@ -59,6 +60,10 @@ define('backfin-core', function() {
   // Get the widgets path
   core.getWidgetsPath = function() {
     return WIDGETS_PATH;
+  };
+
+  core.config = function(options) {
+    coreOptions = options;
   };
 
   // Subscribe to an event
@@ -179,9 +184,10 @@ define('backfin-core', function() {
         widgetsPath = requireConfig.paths.widgets;
       }
 
-      require([widgetsPath + '/' + file + '/main'], function(main) {
+      require(['backfin-sandbox', widgetsPath + '/' + file + '/main'], function(Sandbox, main) {
         try {
-          main(element);
+          var sandbox = new Sandbox(file, element, coreOptions);
+          main(sandbox, element);
         } catch (e) {
           console.error(e.stack);
         }
@@ -273,6 +279,9 @@ define('backfin-core', function() {
     return channels;
   };
 
-  return core;
+  core.getActivityPlugins = function(){
 
+  }
+
+  return core;
 });
