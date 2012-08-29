@@ -282,10 +282,14 @@ define('backfin-core', function() {
   };
 
   core.getActivityPlugins = function(){
-    var results = []
+    var results = [], key, plugin;
     for (key in plugins) {
       if (plugins.hasOwnProperty(key)) {
-        results.push(plugins[key]);
+        plugin = plugins[key];
+        results.push({ 
+          id : key, 
+          views : plugin._registeredViews, 
+          models : plugins._registeredModels });
       }
     }
     return results;
