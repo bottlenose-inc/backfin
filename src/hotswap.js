@@ -1,4 +1,5 @@
 define('backfin-hotswap', ['backfin-core'], function(){
+  /*
   console.log(1);
   
   function Hotswap(options) {
@@ -50,7 +51,97 @@ define('backfin-hotswap', ['backfin-core'], function(){
     });
   }
 
-  window.bfHotswap = new Hotswap();
+  window.bfHotswap = new Hotswap();*/
+  
+  if(!window.location.host || !window.location.host.match(/local/)) { return; }
+  
+  var hotswapErrorDialog = null;
+  var hotswapFirstTime = true;
+  
+  var processChanges = function(res) {
+    if(res.less && _.keys(res.less).length && less) { less.refresh(); }
+    if(res.views) {
+      Object.keys(res.views).forEach(function(key){
+        console.log("Hotswapping view ["+key+"]")
+        try {
+          if(res.views[key] && res.views[key].data) eval(res.views[key].data);
+        } catch(e) {
+          console.error(e.stack);
+        }
+      })
+    }
+    if(res.plugins && _.keys(res.plugins) && bn.plugins && bn.plugins.controller.isReady) {      
+      try {
+        _.keys(res.plugins).forEach(function(key) {
+          if(res.plugins[key].data) {
+              console.log("Hotswapping plugin ["+key+"]")
+              bn.plugins.controller.hotswap(res.plugins[key].data, {allowNew: true});
+          }
+          if(hotswapErrorDialog) {
+            hotswapErrorDialog.close();
+            hotswapErrorDialog.remove();
+            delete hotswapErrorDialog;
+          }
+        });
+      } catch(e) {
+        if(hotswapErrorDialog) {
+          hotswapErrorDialog.close();
+          hotswapErrorDialog.remove();
+          delete hotswapErrorDialog;
+        }
+        hotswapErrorDialog = new bn.views.ErrorDialog('hotswap-error', e);
+        hotswapErrorDialog.open();
+      }
+    }
+  }
+
+  var checkForChanges = function() {
+    var start = new Date();
+    
+    var def = $.ajax({
+       url: 'http://localhost:8077/update.json',
+       contentType : 'application/json',
+       type : 'GET'
+    });
+
+    def.done(function(res) {
+      processChanges(res);
+      //if((new Date() - start) < (50*1000)) {
+      //  setTimeout(checkForChanges, 5000);
+      //} else {
+        checkForChanges();
+      //}
+    });
+    
+    def.error(function() {
+      setTimeout(function() {
+        startCodeStreaming();
+      }, 300)
+    });
+  };
+  
+  var startCodeStreaming = function() {
+
+    var def = $.ajax({
+       url: 'http://localhost:8077/init.json',
+       contentType : 'application/json',
+       type : 'GET'
+    });
+    
+    def.done(function(res) {
+      $.showNotice("New code streaming environment detected");
+      checkForChanges();
+    });
+    
+    def.error(function() {
+      setTimeout(function() {
+        startCodeStreaming();
+      }, 300)
+    });
+  };
+
+  startCodeStreaming();
+
 });
 
 

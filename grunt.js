@@ -29,6 +29,7 @@ module.exports = function(grunt) {
   // Load tasks from "grunt-sample" grunt plugin installed via Npm.
   grunt.loadNpmTasks('grunt-contrib');
   grunt.loadNpmTasks('grunt-requirejs');
+  grunt.loadNpmTasks('grunt-bump');
   
   // Build task
   grunt.registerTask('build', 'clean concat');
