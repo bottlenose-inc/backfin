@@ -57,14 +57,32 @@ define('backfin-hotswap', ['backfin-core'], function(){
   
   var hotswapErrorDialog = null;
   var hotswapFirstTime = true;
+
+  var hotswapByPath = function(path, isNew) {
+    if(path.match(/manifest\.json$/) && isNew) {
+      var md = path.match(/\/(.+)\/manifest\.json/);
+      if(!md || !md[1]) { return; }
+      console.log("Hotswapping [new] plugin: ", plugin.id);
+      backfin.start({element: '#body', channel: md[1]});
+    } else {
+      backfin.getActivityPlugins().forEach(function(plugin) { 
+        var id = path.slice(1, plugin.id.length+1);
+        if(id == plugin.id) {
+          console.log("Hotswapping [existing] plugin: ", plugin.id);
+          backfin.stop(id)
+          backfin.start({element: '#body', channel: id});
+        }
+      });
+    }
+  };
   
   var processChanges = function(res) {
     if(res.less && _.keys(res.less).length && less) { less.refresh(); }
-    if(res.plugins && _.keys(res.plugins) && window.backfin) {      
+    if(res.plugins && _.keys(res.plugins) && window.backfin) {
       try {
         _.keys(res.plugins).forEach(function(key) {
           if(res.plugins[key].data) {
-            backfin.hotswapByPath(res.plugins[key].path, res.plugins[key].isNew);
+            hotswapByPath(res.plugins[key].path, res.plugins[key].isNew);
           }
           if(hotswapErrorDialog) {
             hotswapErrorDialog.close();
