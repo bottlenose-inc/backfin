@@ -13,7 +13,7 @@ define('backfin-core', function() {
   "use strict";
 
   var core = {}; // Mediator object
-  var channels = {}; // Loaded modules and their callbacks
+  var events = {}; // Loaded modules and their callbacks
   var plugins = {};
   var manifests = {};
   var coreOptions = {};
@@ -72,29 +72,28 @@ define('backfin-core', function() {
 
   // Subscribe to an event
   //
-  // * **param:** {string} channel Event name
-  // * **param:** {string} subscriber Subscriber name
+  // * **param:** {string} subscriber Channel name
+  // * **param:** {string} event Event name
   // * **param:** {function} callback Module callback
   // * **param:** {object} context Context in which to execute the module
-  core.subscribe = function(channel, subscriber, callback, context) {
-    if (channel === undefined || callback === undefined || context === undefined) {
+  core.on = function(subscriber, event, callback, context) {
+    if (event === undefined || callback === undefined || context === undefined) {
       throw new Error('Channel, callback, and context must be defined');
-    }
-    if (typeof channel !== 'string') {
-      throw new Error('Channel must be a string');
     }
     if (typeof subscriber !== 'string') {
       throw new Error('Subscriber must be a string');
+    }
+    if (typeof event !== 'string') {
+      throw new Error('Event must be a string');
     }
     if (typeof callback !== 'function') {
       throw new Error('Callback must be a function');
     }
 
-    channels[channel] = (!channels[channel]) ? [] : channels[channel];
-    channels[channel].push({
+    events[event] = (!events[event]) ? [] : events[event];
+    events[event].push({
       subscriber: subscriber,
       callback: callback.bind(context)
-      // callback: this.util.method(callback, context)
     });
   };
 
@@ -120,12 +119,12 @@ define('backfin-core', function() {
 
     var i, l;
     var args = [].slice.call(arguments, 1);
-    if (!channels[channel]) {
+    if (!events[channel]) {
       return false;
     }
-    for (i = 0, l = channels[channel].length; i < l; i += 1) {
+    for (i = 0, l = events[channel].length; i < l; i += 1) {
       try {
-        channels[channel][i]['callback'].apply(this, args);
+        events[channel][i]['callback'].apply(this, args);
       } catch (e) {
         console.error(e.message);
       }
@@ -248,11 +247,11 @@ define('backfin-core', function() {
   core.stop = function(channel) {
     var file = decamelize(channel);
 
-    for (var ch in channels) {
-      if (channels.hasOwnProperty(ch)) {
-        for (var i = 0; i < channels[ch].length; i++) {
-          if (channels[ch][i].subscriber === channel) {
-            channels[ch].splice(i);
+    for (var ch in events) {
+      if (events.hasOwnProperty(ch)) {
+        for (var i = 0; i < events[ch].length; i++) {
+          if (events[ch][i].subscriber === channel) {
+            events[ch].splice(i);
           }
         }
       }
@@ -303,8 +302,8 @@ define('backfin-core', function() {
     }
   };
 
-  core.getChannels = function() {
-    return channels;
+  core.getEvents = function() {
+    return events;
   };
 
   core.onError = function(err, channel) {

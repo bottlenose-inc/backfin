@@ -2,7 +2,7 @@
   module("backfin-core");
   
   var backfin,
-      channels,
+      events,
       TEST_CHANNEL = 'test';
 
   QUnit.testStart(function(){
@@ -14,42 +14,53 @@
       }
     });
 
-    channels = backfin.getChannels();
+    events = backfin.getEvents();
     //verify setup
     ok(backfin);
-    ok(channels);
-
-    delete channels[TEST_CHANNEL]; 
+    ok(events);
   });
 
-  test('subscribe', function(){ 
+  test('on', function(){ 
     throws(
       function() {
-        backfin.subscribe();
+        backfin.on();
       },
       "should throw an error if all the params are not specified"
     );
     throws(
       function() {
-        backfin.subscribe({}, 'subscriber', function () {}, {})
-      },
-      "should throw an error if typeof channel is NOT string"
-    );
-    throws(
-      function() {
-       backfin.subscribe('channel', {}, function(){}, {})
+        backfin.on({}, 'subscriber', function () {}, {})
       },
       "should throw an error if typeof subscriber is NOT string"
     );
     throws(
       function() {
-        backfin.subscribe('channel', 'subscriber', 'callback', {})
+       backfin.on('channel', {}, function(){}, {})
+      },
+      "should throw an error if typeof event is NOT string"
+    );
+    throws(
+      function() {
+        backfin.on('subscriber', 'channel', 'callback', {})
       },
       "should throw an error if typeof callback is NOT a function"
     );
 
-    backfin.subscribe(TEST_CHANNEL, 'spec', function() {}, this);
-    ok(channels[TEST_CHANNEL], "should allow an event to be subscribed");
+    backfin.on(TEST_CHANNEL, 'spec', function() {}, this);
+    ok(events['spec'], "should allow an event to be subscribed");
+
+    var callback,
+        callbackResult = 'callback';
+
+    backfin.on(TEST_CHANNEL, 'foobar', function(){ return callbackResult; }, this);
+    callback = events['foobar'][0].callback; 
+    equal(callback(), callbackResult, 'should be able assign a specific callback for subscribed event');
+
+    var callback1 = function() {};
+    var callback2 = function() {};
+    backfin.on(TEST_CHANNEL, 'twocallbacks', callback1, this);
+    backfin.on(TEST_CHANNEL, 'twocallbacks', callback2, this);
+    equal(events['twocallbacks'].length, 2 , 'should allow subscribing multiple callbacks for single event channel');
   });
 
   test('trigger', function(){    
@@ -65,16 +76,17 @@
 
     var callback = sinon.spy();
     var argument = { foo : 'bar' }
-    channels[TEST_CHANNEL] = [
+    events[TEST_CHANNEL] = [
       { callback:callback }
     ];
+    
     backfin.trigger(TEST_CHANNEL, argument);
     ok(callback.calledWith(argument), 'should pass additional arguments to every call callback for a channel');
 
     var called = backfin.trigger("FOOBAR");
     ok(!called, 'should return false if channel has not been defined');
 
-    channels[TEST_CHANNEL] = [
+    events[TEST_CHANNEL] = [
       { callback:function() {} }
     ];
 
@@ -82,7 +94,7 @@
     backfin.trigger(TEST_CHANNEL);
     equal(backfin.getPublishQueueLength(), 1, "should add to publish queue if widget is loading");
   });
-  
+
 
   test('start', function(){
     var el = document.createElement('div');
@@ -93,7 +105,6 @@
       equal(event,'hello-world');
     }, {});
 
- 
 
     
     backfin.start({
@@ -117,30 +128,6 @@
  
     describe('subscribe', function() {
 
-
-      it('', function() {
-       
-        expect(channels[TEST_CHANNEL]).toBeDefined();
-      });
-
-      it('should be able assign a specific callback for subscribed event', function() {
-        var callback,
-            callbackResult = 'callback';
-        backfin.subscribe(TEST_CHANNEL, 'spec', function() { return callbackResult; }, this);
-        callback = channels[TEST_CHANNEL][0].callback;
-        expect(callback()).toBe(callbackResult);
-      });
-
-      it('should allow subscribing multiple callbacks for single event channel', function() {
-        var callback1 = function() {};
-        var callback2 = function() {};
-
-        backfin.subscribe(TEST_CHANNEL, 'spec', callback1, this);
-        backfin.subscribe(TEST_CHANNEL, 'spec', callback2, this);
-
-        //expect(channels[TEST_CHANNEL]).toContain(callback1, callback2);
-        expect(channels[TEST_CHANNEL].length).toBe(2);
-      });
     });
 
     describe('publish', function() {
@@ -161,7 +148,7 @@
 
       it('should call every callback for a channel, within the correct context', function () {
               var callback = sinon.spy();
-              channels[TEST_CHANNEL] = [
+              events[TEST_CHANNEL] = [
                   {callback:callback}
               ];
 
@@ -173,7 +160,7 @@
       it('should pass additional arguments to every call callback for a channel', function () {
               var callback = sinon.spy();
               var argument = {};
-              channels[TEST_CHANNEL] = [
+              events[TEST_CHANNEL] = [
                   {callback:callback}
               ];
 
@@ -188,7 +175,7 @@
           });
 
           it('should add to publish queue if widget is loading', function() {
-              channels[TEST_CHANNEL] = [
+              events[TEST_CHANNEL] = [
                   {callback:function() {}}
               ];
               backfin.start({ channel:TEST_CHANNEL, element:'#nothing' });

@@ -66,9 +66,10 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
   // * **param:** {string} subscriber Module name
   // * **param:** {string} channel Event name
   // * **param:** {object} callback Module
-  Sandbox.prototype.subscribe = function(){
-    mediator.subscribe(channel, subscriber, callback, context || this);
+  Sandbox.prototype.on = function(eventName, callback, context) {
+    mediator.subscribe(this.channel, eventName, callback, context || this);
   }
+  
   // * **param:** {string} channel Event name
   Sandbox.prototype.trigger = function(channel) {
     mediator.trigger.apply(mediator, arguments);
