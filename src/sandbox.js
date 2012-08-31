@@ -8,9 +8,9 @@
 define('backfin-sandbox',['backfin-core'], function(mediator) {
   "use strict";
   
-  function Sandbox(channel, el, options) {
+  function Sandbox(options) {
     options = options || {};
-    this.channel = channel;
+    this.channel = options.channel;
     
     var self = this;
     var registerView = this.registerView.bind(this),
@@ -48,12 +48,12 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
     Object.keys(options).forEach(function(key){
       switch(key) {
         case 'models':
-          Object.keys(options.models).forEach(function(k) {
+          Object.keys(options.models || {}).forEach(function(k) {
             self.models[k] = configure(registerModel, options.models[k]);
           });
         break;
         case 'views' :
-          Object.keys(options.views).forEach(function(k) {
+          Object.keys(options.views || {}).forEach(function(k) {
             console.log(k, options.views[k], registerView);
             self.views[k] = configure(registerView, options.views[k]);
           });

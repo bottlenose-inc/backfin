@@ -179,28 +179,35 @@ define('backfin-core', function() {
     var l = list.length;
     var promises = [];
 
-    function load(file, element) {
+    function load(channel, element) {
       var dfd = new $.Deferred();
       var widgetsPath = core.getWidgetsPath();
       var requireConfig = require.s.contexts._.config;
-      var manifest = manifests[file];
+      var manifest = manifests[channel];
 
       if (requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
         widgetsPath = requireConfig.paths.widgets;
       }
 
-      var paths = ['backfin-sandbox', widgetsPath + '/' + file + '/main'];
-      if(!manifest) paths.push('text!' + widgetsPath + '/' + file + '/manifest.json');
+      var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
+      if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
       
       require(paths, function(Sandbox, main, manifestText) {
         manifest =  manifest || JSON.parse(manifestText || '{}');
-        manifest.id = element;
+        manifest.id = channel;
+        
+        var options = _.extend(coreOptions, {
+          channel : channel, 
+          element : element,
+          manifest : manifest,
+        })
+
         try {
-          var sandbox = new Sandbox(file, element, coreOptions, manifest);
-          plugins[file] = sandbox;
+          var sandbox = new Sandbox(options);
+          plugins[channel] = sandbox;
           main(sandbox, element);
         } catch (e) {
-          core.onError(e, file);
+          core.onError(e, channel);
         }
         dfd.resolve();
       }, function(err) {
@@ -223,9 +230,8 @@ define('backfin-core', function() {
 
     for (; i < l; i++) {
       var widget = list[i];
-      var file = decamelize(widget.channel);
-
-      promises.push(load(file, widget.element));
+      var channel = decamelize(widget.channel);
+      promises.push(load(channel, widget.element));
     }
 
     $.when.apply($, promises).done(core.emptyPublishQueue);
