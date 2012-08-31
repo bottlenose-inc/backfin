@@ -67,6 +67,11 @@ define('backfin-core', function() {
   core.config = function(options) {
     coreOptions = options;
     manifests = coreOptions.manifests || {};
+    var ids = [];
+    (manifests || []).forEach(function(manifest){
+      if(manifest.buildIn) ids.push(manifest.id);
+    });
+    core.start(ids.map(function(id){ return { channel : id } }));
   };
 
 
@@ -323,6 +328,10 @@ define('backfin-core', function() {
       }
     }
     return results;
+  }
+
+  core.getManifests = function(){
+    return manifests
   }
 
   return core;
