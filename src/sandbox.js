@@ -11,6 +11,7 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
   function Sandbox(options) {
     options = options || {};
     this.channel = options.channel;
+    this.manifest = options.manifest;
     
     var self = this;
     var registerView = this.registerView.bind(this),

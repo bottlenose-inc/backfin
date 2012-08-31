@@ -200,7 +200,7 @@ define('backfin-core', function() {
           channel : channel, 
           element : element,
           manifest : manifest,
-        })
+        });
 
         try {
           var sandbox = new Sandbox(options);
@@ -209,6 +209,7 @@ define('backfin-core', function() {
         } catch (e) {
           core.onError(e, channel);
         }
+
         dfd.resolve();
       }, function(err) {
         if (err.requireType === 'timeout') {
@@ -315,6 +316,7 @@ define('backfin-core', function() {
       if (plugins.hasOwnProperty(key)) {
         plugin = plugins[key];
         results.push({ 
+          manifest : plugin.manifest,
           id : key, 
           views : plugin._registeredViews, 
           models : plugins._registeredModels });
