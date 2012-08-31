@@ -106,7 +106,7 @@ define('backfin-core', function() {
   // call start if the channel is not already registered.
   //
   // * **param:** {string} channel Event name
-  core.publish = function(channel) {
+  core.trigger = function(channel) {
     if (channel === undefined) {
       throw new Error('Channel must be defined');
     }
@@ -134,13 +134,14 @@ define('backfin-core', function() {
     return true;
   };
 
+
   // Empty the list with all stored publish events.
   core.emptyPublishQueue = function() {
     var args, i, len;
     isWidgetLoading = false;
 
     for (i = 0, len = publishQueue.length; i < len; i++) {
-      core.publish.apply(this, publishQueue[i]);
+      core.trigger.apply(this, publishQueue[i]);
     }
 
     // _.each(publishQueue, function(args) {

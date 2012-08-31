@@ -1,15 +1,22 @@
 (function() {
   module("backfin-core");
   
-  var mediator,
+  var backfin,
       channels,
       TEST_CHANNEL = 'test';
 
   QUnit.testStart(function(){
-    mediator = window.core;
-    channels = mediator.getChannels();
+    backfin = window.core;
+    
+    backfin.config({
+      manifests : {
+        'test' : {}
+      }
+    });
+
+    channels = backfin.getChannels();
     //verify setup
-    ok(mediator);
+    ok(backfin);
     ok(channels);
 
     delete channels[TEST_CHANNEL]; 
@@ -18,46 +25,82 @@
   test('subscribe', function(){ 
     throws(
       function() {
-        mediator.subscribe();
+        backfin.subscribe();
       },
       "should throw an error if all the params are not specified"
     );
     throws(
       function() {
-        mediator.subscribe({}, 'subscriber', function () {}, {})
+        backfin.subscribe({}, 'subscriber', function () {}, {})
       },
       "should throw an error if typeof channel is NOT string"
     );
     throws(
       function() {
-       mediator.subscribe('channel', {}, function(){}, {})
+       backfin.subscribe('channel', {}, function(){}, {})
       },
       "should throw an error if typeof subscriber is NOT string"
     );
     throws(
       function() {
-        mediator.subscribe('channel', 'subscriber', 'callback', {})
+        backfin.subscribe('channel', 'subscriber', 'callback', {})
       },
       "should throw an error if typeof callback is NOT a function"
     );
 
-    mediator.subscribe(TEST_CHANNEL, 'spec', function() {}, this);
+    backfin.subscribe(TEST_CHANNEL, 'spec', function() {}, this);
     ok(channels[TEST_CHANNEL], "should allow an event to be subscribed");
   });
 
+  test('trigger', function(){    
+    throws(
+      function() { backfin.trigger()},
+      "should throw an error if all the params are not specified"
+    );
+
+    throws(
+      function() { backfin.trigger({}) },
+      "should throw an error if typeof channel param is not string"
+    );
+
+    var callback = sinon.spy();
+    var argument = { foo : 'bar' }
+    channels[TEST_CHANNEL] = [
+      { callback:callback }
+    ];
+    backfin.trigger(TEST_CHANNEL, argument);
+    ok(callback.calledWith(argument), 'should pass additional arguments to every call callback for a channel');
+
+    var called = backfin.trigger("FOOBAR");
+    ok(!called, 'should return false if channel has not been defined');
+
+    channels[TEST_CHANNEL] = [
+      { callback:function() {} }
+    ];
+
+    backfin.start({ channel:TEST_CHANNEL, element : '#nothing' });
+    backfin.trigger(TEST_CHANNEL);
+    equal(backfin.getPublishQueueLength(), 1, "should add to publish queue if widget is loading");
+  });
+  
+
   test('start', function(){
     var el = document.createElement('div');
-
+       return;
     expect(3);
 
-    mediator.subscribe('load', '', function(event){
+    backfin.subscribe('load', '', function(event){
       equal(event,'hello-world');
     }, {});
 
-    mediator.start({
+ 
+
+    
+    backfin.start({
       element : el, 
       channel : "hello-world"
     });
+    
     
     /*
     it('should throw an error if all the params are not specified', function () {});
@@ -69,7 +112,7 @@
   })
 
   return;
-  describe('Mediator', function () {
+  describe('backfin', function () {
 
  
     describe('subscribe', function() {
@@ -83,7 +126,7 @@
       it('should be able assign a specific callback for subscribed event', function() {
         var callback,
             callbackResult = 'callback';
-        mediator.subscribe(TEST_CHANNEL, 'spec', function() { return callbackResult; }, this);
+        backfin.subscribe(TEST_CHANNEL, 'spec', function() { return callbackResult; }, this);
         callback = channels[TEST_CHANNEL][0].callback;
         expect(callback()).toBe(callbackResult);
       });
@@ -92,8 +135,8 @@
         var callback1 = function() {};
         var callback2 = function() {};
 
-        mediator.subscribe(TEST_CHANNEL, 'spec', callback1, this);
-        mediator.subscribe(TEST_CHANNEL, 'spec', callback2, this);
+        backfin.subscribe(TEST_CHANNEL, 'spec', callback1, this);
+        backfin.subscribe(TEST_CHANNEL, 'spec', callback2, this);
 
         //expect(channels[TEST_CHANNEL]).toContain(callback1, callback2);
         expect(channels[TEST_CHANNEL].length).toBe(2);
@@ -105,13 +148,13 @@
           describe('verification of parameters', function() {
               it('should throw an error if all the params are not specified', function () {
                   expect(function () {
-                      mediator.publish();
+                      backfin.publish();
                   }).toThrow(new Error('Channel must be defined'));
               });
 
               it('should throw an error if typeof channel param is not string', function () {
                   expect(function () {
-                      mediator.publish({});
+                      backfin.publish({});
                   }).toThrow(new Error('Channel must be a string'));
               });
           });
@@ -122,7 +165,7 @@
                   {callback:callback}
               ];
 
-              mediator.publish(TEST_CHANNEL);
+              backfin.publish(TEST_CHANNEL);
 
               expect(callback).toHaveBeenCalled();
           });
@@ -134,13 +177,13 @@
                   {callback:callback}
               ];
 
-              mediator.publish(TEST_CHANNEL, argument);
+              backfin.publish(TEST_CHANNEL, argument);
 
               expect(callback).toHaveBeenCalledWith(argument);
           });
 
       it('should return false if channel has not been defined', function () {
-              var called = mediator.publish(TEST_CHANNEL);
+              var called = backfin.publish(TEST_CHANNEL);
               expect(called).toBe(false);
           });
 
@@ -148,11 +191,11 @@
               channels[TEST_CHANNEL] = [
                   {callback:function() {}}
               ];
-              mediator.start({ channel:TEST_CHANNEL, element:'#nothing' });
+              backfin.start({ channel:TEST_CHANNEL, element:'#nothing' });
 
-              mediator.publish(TEST_CHANNEL);
+              backfin.publish(TEST_CHANNEL);
 
-              expect(mediator.getPublishQueueLength()).toBe(1);
+              expect(backfin.getPublishQueueLength()).toBe(1);
           })
     });
 

@@ -70,8 +70,8 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
     mediator.subscribe(channel, subscriber, callback, context || this);
   }
   // * **param:** {string} channel Event name
-  Sandbox.prototype.publish = function(channel) {
-    mediator.publish.apply(mediator, arguments);
+  Sandbox.prototype.trigger = function(channel) {
+    mediator.trigger.apply(mediator, arguments);
   }
 
   // * **param:** {Object/Array} an array with objects or single object containing channel and element
