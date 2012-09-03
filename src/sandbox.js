@@ -55,7 +55,6 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
         break;
         case 'views' :
           Object.keys(options.views || {}).forEach(function(k) {
-            console.log(k, options.views[k], registerView);
             self.views[k] = configure(registerView, options.views[k]);
           });
         break;

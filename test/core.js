@@ -97,16 +97,12 @@
 
 
   test('start', function(){
-    var el = document.createElement('div');
-       return;
     expect(3);
 
     backfin.subscribe('load', '', function(event){
       equal(event,'hello-world');
     }, {});
 
-
-    
     backfin.start({
       element : el, 
       channel : "hello-world"
