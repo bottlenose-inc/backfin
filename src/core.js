@@ -66,7 +66,12 @@ define('backfin-core', function() {
 
   core.config = function(options) {
     coreOptions = options;
-    manifests = coreOptions.manifests || {};
+    manifests = coreOptions.manifests || [];
+
+    manifests.forEach(function(manifest){
+      manifests[manifest.id] = manifest;
+    });
+
     var ids = [];
     (manifests || []).forEach(function(manifest){
       if(manifest.buildIn) ids.push(manifest.id);
