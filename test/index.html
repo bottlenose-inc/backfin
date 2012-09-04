@@ -14,7 +14,6 @@
   <script>
     "use strict";
     QUnit.config.reorder = false;
-
     require.config({
       // [RequireJS](http://requirejs.org/) 2.0+ plus has error callbacks (errbacks)
       // which provide per-require error handling. To utilize this feature
@@ -42,12 +41,12 @@
         backbone : 'vendor/backbone-0.9.2',
         //backfin
         widgets : 'plugins',
-        "backfin-sandbox": '../../backfin/src/sandbox',
-        "backfin-core": '../../backfin/src/core',
+        "backfin-sandbox": '/src/sandbox',
+        "backfin-core": '/src/core',
       },
       urlArgs: "bust=" +  (new Date()).getTime()
     });
-    require(['backfin-core', 'backfin-sandbox'], function (core, sandbox) {
+    require(['backfin-core', 'backfin-sandbox', 'plugins/test/main'], function (core, sandbox) {
       window.core = core;
       window.sandbox = sandbox;
     })

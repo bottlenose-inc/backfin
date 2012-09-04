@@ -13,10 +13,13 @@ define('backfin-core', function() {
   "use strict";
 
   var core = {}; // Mediator object
-  var channels = {}; // Loaded modules and their callbacks
+  var events = {}; // Loaded modules and their callbacks
+  var plugins = {};
+  var manifests = {};
+  var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
-  var WIDGETS_PATH = '../../../widgets'; // Path to widgets
+  var WIDGETS_PATH = '../../../plugins'; // Path to widgets
 
  
   // The bind method is used for callbacks.
@@ -61,31 +64,46 @@ define('backfin-core', function() {
     return WIDGETS_PATH;
   };
 
+  core.config = function(options) {
+    coreOptions = options;
+    manifests = coreOptions.manifests || [];
+
+    manifests.forEach(function(manifest){
+      manifests[manifest.id] = manifest;
+    });
+
+    var ids = [];
+    (manifests || []).forEach(function(manifest){
+      if(manifest.buildIn) ids.push(manifest.id);
+    });
+    core.start(ids.map(function(id){ return { channel : id } }));
+  };
+
+
   // Subscribe to an event
   //
-  // * **param:** {string} channel Event name
-  // * **param:** {string} subscriber Subscriber name
+  // * **param:** {string} subscriber Channel name
+  // * **param:** {string} event Event name
   // * **param:** {function} callback Module callback
   // * **param:** {object} context Context in which to execute the module
-  core.subscribe = function(channel, subscriber, callback, context) {
-    if (channel === undefined || callback === undefined || context === undefined) {
+  core.on = function(subscriber, event, callback, context) {
+    if (event === undefined || callback === undefined || context === undefined) {
       throw new Error('Channel, callback, and context must be defined');
-    }
-    if (typeof channel !== 'string') {
-      throw new Error('Channel must be a string');
     }
     if (typeof subscriber !== 'string') {
       throw new Error('Subscriber must be a string');
+    }
+    if (typeof event !== 'string') {
+      throw new Error('Event must be a string');
     }
     if (typeof callback !== 'function') {
       throw new Error('Callback must be a function');
     }
 
-    channels[channel] = (!channels[channel]) ? [] : channels[channel];
-    channels[channel].push({
+    events[event] = (!events[event]) ? [] : events[event];
+    events[event].push({
       subscriber: subscriber,
       callback: callback.bind(context)
-      // callback: this.util.method(callback, context)
     });
   };
 
@@ -97,7 +115,7 @@ define('backfin-core', function() {
   // call start if the channel is not already registered.
   //
   // * **param:** {string} channel Event name
-  core.publish = function(channel) {
+  core.trigger = function(channel) {
     if (channel === undefined) {
       throw new Error('Channel must be defined');
     }
@@ -111,12 +129,12 @@ define('backfin-core', function() {
 
     var i, l;
     var args = [].slice.call(arguments, 1);
-    if (!channels[channel]) {
+    if (!events[channel]) {
       return false;
     }
-    for (i = 0, l = channels[channel].length; i < l; i += 1) {
+    for (i = 0, l = events[channel].length; i < l; i += 1) {
       try {
-        channels[channel][i]['callback'].apply(this, args);
+        events[channel][i]['callback'].apply(this, args);
       } catch (e) {
         console.error(e.message);
       }
@@ -125,13 +143,14 @@ define('backfin-core', function() {
     return true;
   };
 
+
   // Empty the list with all stored publish events.
   core.emptyPublishQueue = function() {
     var args, i, len;
     isWidgetLoading = false;
 
     for (i = 0, len = publishQueue.length; i < len; i++) {
-      core.publish.apply(this, publishQueue[i]);
+      core.trigger.apply(this, publishQueue[i]);
     }
 
     // _.each(publishQueue, function(args) {
@@ -170,21 +189,37 @@ define('backfin-core', function() {
     var l = list.length;
     var promises = [];
 
-    function load(file, element) {
+    function load(channel, element) {
       var dfd = new $.Deferred();
       var widgetsPath = core.getWidgetsPath();
       var requireConfig = require.s.contexts._.config;
+      var manifest = manifests[channel];
 
       if (requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
         widgetsPath = requireConfig.paths.widgets;
       }
 
-      require([widgetsPath + '/' + file + '/main'], function(main) {
+      var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
+      if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
+      
+      require(paths, function(Sandbox, main, manifestText) {
+        manifest =  manifest || JSON.parse(manifestText || '{}');
+        manifest.id = channel;
+        
+        var options = _.extend(coreOptions, {
+          channel : channel, 
+          element : element,
+          manifest : manifest,
+        });
+
         try {
-          main(element);
+          var sandbox = new Sandbox(options);
+          plugins[channel] = sandbox;
+          main(sandbox, element);
         } catch (e) {
-          console.error(e.stack);
+          core.onError(e, channel);
         }
+
         dfd.resolve();
       }, function(err) {
         if (err.requireType === 'timeout') {
@@ -206,9 +241,8 @@ define('backfin-core', function() {
 
     for (; i < l; i++) {
       var widget = list[i];
-      var file = decamelize(widget.channel);
-
-      promises.push(load(file, widget.element));
+      var channel = decamelize(widget.channel);
+      promises.push(load(channel, widget.element));
     }
 
     $.when.apply($, promises).done(core.emptyPublishQueue);
@@ -220,24 +254,33 @@ define('backfin-core', function() {
   //
   // * **param:** {string} channel Event name
   // * **param:** {string} el Element name
-  core.stop = function(channel, el) {
+  core.stop = function(channel) {
     var file = decamelize(channel);
 
-    for (var ch in channels) {
-      if (channels.hasOwnProperty(ch)) {
-        for (var i = 0; i < channels[ch].length; i++) {
-          if (channels[ch][i].subscriber === channel) {
-            channels[ch].splice(i);
+    for (var ch in events) {
+      if (events.hasOwnProperty(ch)) {
+        for (var i = 0; i < events[ch].length; i++) {
+          if (events[ch][i].subscriber === channel) {
+            events[ch].splice(i);
           }
         }
       }
     }
-    // Remove all modules under a widget path (e.g widgets/todos)
-    core.unload('widgets/' + file);
 
-    // Remove widget descendents, unbinding any event handlers
-    // attached to children within the widget.
-    $(el).children().remove();
+    // Remove all modules under a widget path (e.g widgets/todos)
+    core.unload('plugins/' + file);
+
+    var plugin = plugins[channel];
+    if(!plugin) return console.log('plugin not found');
+
+    plugin._registeredViews.forEach(function(view){
+      view && view.destroy ? view.destroy() : view.remove();
+    });
+
+    plugin._registeredModels.forEach(function(model){
+      model && model.destroy && model.destroy(); 
+    });
+    delete plugins[channel];
   };
 
   // Undefine/unload a module, resetting the internal state of it in require.js
@@ -269,14 +312,37 @@ define('backfin-core', function() {
     }
   };
 
-  core.getChannels = function() {
-    return channels;
+  core.getEvents = function() {
+    return events;
   };
 
-  return core;
+  core.onError = function(err, channel) {
+    console.error('plugin :' + channel + '\n' + err.stack);
+  }
 
+  core.getActivityPlugins = function(){
+    var results = [], key, plugin;
+    for (key in plugins) {
+      if (plugins.hasOwnProperty(key)) {
+        plugin = plugins[key];
+        results.push({ 
+          manifest : plugin.manifest,
+          id : key, 
+          views : plugin._registeredViews, 
+          models : plugins._registeredModels });
+      }
+    }
+    return results;
+  }
+
+  core.getManifests = function(){
+    return manifests
+  }
+
+  return core;
 });
 define('backfin-hotswap', ['backfin-core'], function(){
+  /*
   console.log(1);
   
   function Hotswap(options) {
@@ -328,7 +394,104 @@ define('backfin-hotswap', ['backfin-core'], function(){
     });
   }
 
-  window.bfHotswap = new Hotswap();
+  window.bfHotswap = new Hotswap();*/
+  
+  if(!window.location.host || !window.location.host.match(/local/)) { return; }
+  
+  var hotswapErrorDialog = null;
+  var hotswapFirstTime = true;
+
+  var hotswapByPath = function(path, isNew) {
+    if(path.match(/manifest\.json$/) && isNew) {
+      var md = path.match(/\/(.+)\/manifest\.json/);
+      if(!md || !md[1]) { return; }
+      console.log("Hotswapping [new] plugin: ", plugin.id);
+      backfin.start({element: '#body', channel: md[1]});
+    } else {
+      backfin.getActivityPlugins().forEach(function(plugin) { 
+        var id = path.slice(1, plugin.id.length+1);
+        if(id == plugin.id) {
+          console.log("Hotswapping [existing] plugin: ", plugin.id);
+          backfin.stop(id)
+          backfin.start({element: '#body', channel: id});
+        }
+      });
+    }
+  };
+  
+  var processChanges = function(res) {
+    if(res.less && _.keys(res.less).length && less) { less.refresh(); }
+    if(res.plugins && _.keys(res.plugins) && window.backfin) {
+      try {
+        _.keys(res.plugins).forEach(function(key) {
+          if(res.plugins[key].data) {
+            hotswapByPath(res.plugins[key].path, res.plugins[key].isNew);
+          }
+          if(hotswapErrorDialog) {
+            hotswapErrorDialog.close();
+            hotswapErrorDialog.remove();
+            delete hotswapErrorDialog;
+          }
+        });
+      } catch(e) {
+        if(hotswapErrorDialog) {
+          hotswapErrorDialog.close();
+          hotswapErrorDialog.remove();
+          delete hotswapErrorDialog;
+        }
+        hotswapErrorDialog = new bn.views.ErrorDialog('hotswap-error', e);
+        hotswapErrorDialog.open();
+      }
+    }
+  }
+
+  var checkForChanges = function() {
+    var start = new Date();
+    
+    var def = $.ajax({
+       url: 'http://localhost:8077/update.json',
+       contentType : 'application/json',
+       type : 'GET'
+    });
+
+    def.done(function(res) {
+      processChanges(res);
+      //if((new Date() - start) < (50*1000)) {
+      //  setTimeout(checkForChanges, 5000);
+      //} else {
+        checkForChanges();
+      //}
+    });
+    
+    def.error(function() {
+      setTimeout(function() {
+        startCodeStreaming();
+      }, 1000)
+    });
+  };
+  
+  var startCodeStreaming = function() {
+
+    var def = $.ajax({
+       url: 'http://localhost:8077/init.json',
+       contentType : 'application/json',
+       type : 'GET'
+    });
+    
+    def.done(function(res) {
+      $.showNotice("New code streaming environment detected");
+      checkForChanges();
+    });
+    
+    def.error(function() {
+      setTimeout(function() {
+        startCodeStreaming();
+      }, 300)
+    });
+  };
+
+  startCodeStreaming();
+
 });
 
 
@@ -344,32 +507,90 @@ define('backfin-hotswap', ['backfin-core'], function(){
 define('backfin-sandbox',['backfin-core'], function(mediator) {
   "use strict";
   
-  var sandbox = {};
+  function Sandbox(options) {
+    options = options || {};
+    this.channel = options.channel;
+    this.manifest = options.manifest;
+    
+    var self = this;
+    var registerView = this.registerView.bind(this),
+        registerModel = this.registerModel.bind(this);
+    
+    this._registeredViews = [];
+    this._registeredModels = [];
+
+    this.views = {};
+    this.models = {};
+
+    this.View = Backbone.View.extend({
+      constructor : function(){
+        registerView(this);
+        this.initialize && this.initialize.apply(this, arguments);
+      }
+    });
+
+    this.Model = Backbone.Model.extend({
+      constructor : function(){
+        registerModel(this);
+        this.initialize && this.initialize.apply(this, arguments);
+      }
+    });
+
+    function configure(registerFn, object) {
+      return object.extend({
+        constructor : function(){
+          registerFn(this);
+          this.initialize && this.initialize.apply(this, arguments);
+        }
+      });
+    }
+    
+    Object.keys(options).forEach(function(key){
+      switch(key) {
+        case 'models':
+          Object.keys(options.models || {}).forEach(function(k) {
+            self.models[k] = configure(registerModel, options.models[k]);
+          });
+        break;
+        case 'views' :
+          Object.keys(options.views || {}).forEach(function(k) {
+            self.views[k] = configure(registerView, options.views[k]);
+          });
+        break;
+      }
+    });
+  }
 
   // * **param:** {string} subscriber Module name
   // * **param:** {string} channel Event name
   // * **param:** {object} callback Module
-  sandbox.subscribe = function(channel, subscriber, callback, context) {
-    //if (permissions.validate(channel, subscriber)) {
-      mediator.subscribe(channel, subscriber, callback, context || this);
-    //}
-  };
+  Sandbox.prototype.on = function(eventName, callback, context) {
+    mediator.on(this.channel, eventName, callback, context || this);
+  }
 
   // * **param:** {string} channel Event name
-  sandbox.publish = function(channel) {
-    mediator.publish.apply(mediator, arguments);
-  };
+  Sandbox.prototype.trigger = function(channel) {
+    mediator.trigger.apply(mediator, arguments);
+  }
 
   // * **param:** {Object/Array} an array with objects or single object containing channel and element
-  sandbox.start = function(list) {
+  Sandbox.prototype.start = function(list) {
     mediator.start.apply(mediator, arguments);
-  };
+  }
 
   // * **param:** {string} channel Event name
   // * **param:** {string} el Element name
-  sandbox.stop = function(channel, el) {
+  Sandbox.prototype.stop = function(channel, el) {
     mediator.stop.apply(mediator, arguments);
   };
 
-  return sandbox;
+  Sandbox.prototype.registerView = function(view) {
+    this._registeredViews.push(view);
+  };
+
+  Sandbox.prototype.registerModel = function(model) {
+    this._registeredModels.push(model);
+  };
+
+  return Sandbox;
 });

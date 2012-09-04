@@ -26,14 +26,14 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
     this.View = Backbone.View.extend({
       constructor : function(){
         registerView(this);
-        this.initialize.apply(this, arguments);
+        this.initialize && this.initialize.apply(this, arguments);
       }
     });
 
     this.Model = Backbone.Model.extend({
       constructor : function(){
         registerModel(this);
-        this.initialize.apply(this, arguments);
+        this.initialize && this.initialize.apply(this, arguments);
       }
     });
 
@@ -41,7 +41,7 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
       return object.extend({
         constructor : function(){
           registerFn(this);
-          this.initialize.apply(this, arguments);
+          this.initialize && this.initialize.apply(this, arguments);
         }
       });
     }

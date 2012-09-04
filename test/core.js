@@ -5,14 +5,18 @@
       events,
       TEST_CHANNEL = 'test';
 
+
+  
+      
   QUnit.testStart(function(){
     backfin = window.core;
-    
     backfin.config({
-      manifests : {
-        'test' : {}
-      }
+      manifests : [
+        { id : 'foobar' },
+        { test : TEST_CHANNEL }
+      ]
     });
+    
 
     events = backfin.getEvents();
     //verify setup
@@ -90,24 +94,24 @@
       { callback:function() {} }
     ];
 
-    backfin.start({ channel:TEST_CHANNEL, element : '#nothing' });
-    backfin.trigger(TEST_CHANNEL);
+    //fake fetching of the foobar 
+    backfin.start({ channel: 'foobar' });
+    backfin.trigger('foobar');
     equal(backfin.getPublishQueueLength(), 1, "should add to publish queue if widget is loading");
   });
 
 
   test('start', function(){
-    expect(3);
-
-    backfin.subscribe('load', '', function(event){
-      equal(event,'hello-world');
-    }, {});
 
     backfin.start({
-      element : el, 
-      channel : "hello-world"
+      channel : TEST_CHANNEL
     });
     
+    //setTimeout(function(){
+      backfin.start({
+        channel : TEST_CHANNEL
+      });
+    //}, 1000)
     
     /*
     it('should throw an error if all the params are not specified', function () {});
@@ -119,6 +123,7 @@
   })
 
   return;
+  
   describe('backfin', function () {
 
  

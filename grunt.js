@@ -16,7 +16,7 @@ module.exports = function(grunt) {
       base: '.'
     },
     qunit: {
-      index: ['http://localhost:8000/test/index.html']
+      index: ['http://localhost:8888/test/index.html']
     },
     concat: {
       dist: {
