@@ -1,6 +1,4 @@
-define('backfin-hotswap', ['backfin-core'], function(){
-  /*
-  console.log(1);
+define('backfin-hotswap', ['backfin-core'], function(backfin){
   
   function Hotswap(options) {
     options || (options = {});
@@ -13,50 +11,48 @@ define('backfin-hotswap', ['backfin-core'], function(){
   }
 
   Hotswap.prototype._connect = function() {
-    var socket = new WebSocket('ws://' + this.options.server.replace('http', ''));
-    var self = this;
-    socket.onclose = function(){
-      console.log('[Hotswap] socket '+socket.readyState+' (Closed)');
-      setTimeout(function(){
-        self._connect();
-      }, 1000);
-      delete socket;
-    };
-    socket.onmessage = self._parseMessage.bind(this);
+    var start = new Date();
+    var def = $.ajax({
+       url: 'http://localhost:8077/update.json',
+       contentType : 'application/json',
+       type : 'GET'
+    });
+    def.then(function(res){
+      this._connect();
+      this._handleResponse(res);
+    }.bind(this), this._connect.bind(this)); 
   }
 
-  Hotswap.prototype._parseMessage = function(msg) {
-    var str = msg.data, controlChar = str[0], data = str.slice(1);
-    switch(controlChar){
-      case 'c':
-      if(str.indexOf('less/') != -1) {
-        $('link').each(function(i,link) {
-          console.log(link);
-          if(link.href.indexOf('less') != -1) {
-            link.href = link.href.replace(/\?.+/ig, 't=' + Date.now());
-          }
-        })
-        return;
+  Hotswap.prototype._handleResponse = function(res) {
+    var self = this;
+    //xxx not perfect should allow for css to reload as well
+    if(res.less && Object.keys(res.less) &&  window.less) less.refresh();
+
+    if(res.plugins) {
+      try {
+        Object.keys(res.plugins).forEach(function(key) {
+          var id = key.replace('plugins/', '').replace('/main.js', '');
+          self._reloadPlugin(id, res.plugins[key].isNew);
+          console.log(res.plugins);    
+        });
+      } catch(e) {
+        console.warn(e.stack);
       }
-      var path = str.slice(1).replace(this.options.rootPath, '').replace('.js','');
-      this._reloadView(path);
-      break;
     }
   }
 
-  Hotswap.prototype._reloadView = function(path) {
-    requirejs.undef(path);
-    require([path], function(newView){
-      return newView.prototype._onHotswap(newView);
-    });
+  Hotswap.prototype._reloadPlugin = function(pluginId, isNew) {
+    if(!pluginId) return false;
+    backfin.stop(pluginId);
+    backfin.start(pluginId);
   }
 
-  window.bfHotswap = new Hotswap();*/
-  
-  if(!window.location.host || !window.location.host.match(/local/)) { return; }
-  
-  var hotswapErrorDialog = null;
-  var hotswapFirstTime = true;
+  return new Hotswap();
+
+  return;
+  if(!window.location.host || !window.location.host.match(/local/)) return;
+
+  //var hotswapErrorDialog = null;
 
   var hotswapByPath = function(path, isNew) {
     if(path.match(/manifest\.json$/) && isNew) {
@@ -70,34 +66,34 @@ define('backfin-hotswap', ['backfin-core'], function(){
         if(id == plugin.id) {
           console.log("Hotswapping [existing] plugin: ", plugin.id);
           backfin.stop(id)
-          backfin.start({element: '#body', channel: id});
+          backfin.start({ id: id});
         }
       });
     }
   };
   
   var processChanges = function(res) {
-    if(res.less && _.keys(res.less).length && less) { less.refresh(); }
-    if(res.plugins && _.keys(res.plugins) && window.backfin) {
+    if(res.less && _.keys(res.less).length && window.less) { less.refresh(); }
+    if(res.plugins) {
       try {
         _.keys(res.plugins).forEach(function(key) {
           if(res.plugins[key].data) {
             hotswapByPath(res.plugins[key].path, res.plugins[key].isNew);
           }
-          if(hotswapErrorDialog) {
-            hotswapErrorDialog.close();
-            hotswapErrorDialog.remove();
-            delete hotswapErrorDialog;
-          }
+          //if(hotswapErrorDialog) {
+          //  hotswapErrorDialog.close();
+          //  hotswapErrorDialog.remove();
+          //  delete hotswapErrorDialog;
+          //}
         });
       } catch(e) {
-        if(hotswapErrorDialog) {
-          hotswapErrorDialog.close();
-          hotswapErrorDialog.remove();
+        //if(hotswapErrorDialog) {
+          //hotswapErrorDialog.close();
+          //hotswapErrorDialog.remove();
           delete hotswapErrorDialog;
-        }
-        hotswapErrorDialog = new bn.views.ErrorDialog('hotswap-error', e);
-        hotswapErrorDialog.open();
+        //}
+        //hotswapErrorDialog = new bn.views.ErrorDialog('hotswap-error', e);
+        //hotswapErrorDialog.open();
       }
     }
   }
@@ -136,7 +132,7 @@ define('backfin-hotswap', ['backfin-core'], function(){
     });
     
     def.done(function(res) {
-      $.showNotice("New code streaming environment detected");
+      //$.showNotice("New code streaming environment detected");
       checkForChanges();
     });
     

@@ -41,8 +41,9 @@
         backbone : 'vendor/backbone-0.9.2',
         //backfin
         widgets : 'plugins',
+        "backfin-hotswap" : '/src/hotswap',
         "backfin-sandbox": '/src/sandbox',
-        "backfin-core": '/src/core',
+        "backfin-core": '/src/core'
       },
       urlArgs: "bust=" +  (new Date()).getTime()
     });
@@ -51,15 +52,17 @@
       console.warn('require.js: ' + err.message);
     }
     
-    require(['backfin-core', 'backfin-sandbox', 'plugins/test/main'], function (core, sandbox) {
+    require(['backfin-core', 'backfin-sandbox', 'backfin-hotswap', 'plugins/test/main'], function (core, sandbox, hotswap) {
       window.core = core;
       window.sandbox = sandbox;
+      window.hotswap = hotswap;
     })
   </script>
 
 </head>
 <body>
   <script src="core.js"></script>
+  <script src="hotswap.js"></script>
   <div id="qunit"></div>
   <div id="test"><div>
 </body>

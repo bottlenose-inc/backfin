@@ -77,7 +77,6 @@ define('backfin-core', function() {
     core.start(ids.map(function(id){ return { id : id } }));
   };
 
-
   // Subscribe to an event
   //
   // * **param:** {string} subscriber Channel name
@@ -263,8 +262,10 @@ define('backfin-core', function() {
     core.unload('plugins/' + file);
 
     var plugin = plugins[channel];
-    if(!plugin) return console.log('plugin not found');
-
+    if(!plugin) {
+      console.warn('backfin: Plugin not found', channel);
+      return false;
+    }
     plugin._registeredViews.forEach(function(view){
       view && view.destroy ? view.destroy() : view.remove();
     });
