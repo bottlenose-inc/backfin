@@ -44,6 +44,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   Hotswap.prototype._reloadPlugin = function(pluginId, isNew) {
     if(!pluginId) return false;
     backfin.stop(pluginId);
+    backfin.unload(pluginId);
     backfin.start(pluginId);
   }
 

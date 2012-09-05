@@ -171,9 +171,7 @@ define('backfin-core', function() {
     }
     
     // Allow a single object as param
-    if (isObject(list) && !Array.isArray(list)) {
-      list = [list];
-    }
+    if (isObject(list) && !Array.isArray(list)) list = [list];
 
     if (!Array.isArray(list)) {
       throw new Error('Channel must be defined as an array');
@@ -205,6 +203,8 @@ define('backfin-core', function() {
         });
 
         try {
+          if(plugins[channel]) core.stop(channel);
+
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
           main.apply(null, [sandbox].concat(args));
@@ -257,9 +257,6 @@ define('backfin-core', function() {
         }
       }
     }
-
-    // Remove all modules under a widget path (e.g widgets/todos)
-    core.unload('plugins/' + file);
 
     var plugin = plugins[channel];
     if(!plugin) {
