@@ -25,8 +25,12 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
 
     this.View = Backbone.View.extend({
       constructor : function(){
-        registerView(this);
+        this.cid = _.uniqueId('view');
+        this._configure(options || {});
+        this._ensureElement();
         this.initialize && this.initialize.apply(this, arguments);
+        this.delegateEvents();
+        registerView(this);
       }
     });
 
