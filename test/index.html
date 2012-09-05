@@ -46,6 +46,11 @@
       },
       urlArgs: "bust=" +  (new Date()).getTime()
     });
+
+    requirejs.onError = function(err) {
+      console.warn('require.js: ' + err.message);
+    }
+    
     require(['backfin-core', 'backfin-sandbox', 'plugins/test/main'], function (core, sandbox) {
       window.core = core;
       window.sandbox = sandbox;

@@ -1,9 +1,6 @@
 define(function() {
-  return function(sandbox){
-    
-    var x = sandbox.View.extend({});
-
-    x = new x();
-    console.log(x);
+  return function(sandbox, options){
+    var args = [].slice.call(arguments, 1);
+    sandbox.trigger('loaded', args);
   }
 });

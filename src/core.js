@@ -66,17 +66,15 @@ define('backfin-core', function() {
 
   core.config = function(options) {
     coreOptions = options;
-    manifests = coreOptions.manifests || [];
-
-    manifests.forEach(function(manifest){
+    (coreOptions.manifests || []).forEach(function(manifest){
       manifests[manifest.id] = manifest;
     });
 
     var ids = [];
-    (manifests || []).forEach(function(manifest){
+    (coreOptions.manifests || []).forEach(function(manifest){
       if(manifest.buildIn) ids.push(manifest.id);
     });
-    core.start(ids.map(function(id){ return { channel : id } }));
+    core.start(ids.map(function(id){ return { id : id } }));
   };
 
 
@@ -116,12 +114,9 @@ define('backfin-core', function() {
   //
   // * **param:** {string} channel Event name
   core.trigger = function(channel) {
-    if (channel === undefined) {
-      throw new Error('Channel must be defined');
-    }
-    if (typeof channel !== 'string') {
-      throw new Error('Channel must be a string');
-    }
+    if (channel === undefined) throw new Error('Channel must be defined');
+    if (typeof channel !== 'string') throw new Error('Channel must be a string');
+
     if (isWidgetLoading) { // Catch publish event!
       publishQueue.push(arguments);
       return false;
@@ -169,10 +164,10 @@ define('backfin-core', function() {
     var args = [].slice.call(arguments, 1);
     
     // Allow pair channel & element as params 
-    if (typeof list === 'string' && args[0] !== undefined) {
+    if (typeof list === 'string') {
       list = [{
-        channel : list,
-        element : args[0]
+        id : list,
+        options : args
       }];
     }
     
@@ -189,7 +184,7 @@ define('backfin-core', function() {
     var l = list.length;
     var promises = [];
 
-    function load(channel, element) {
+    function load(channel, args) {
       var dfd = new $.Deferred();
       var widgetsPath = core.getWidgetsPath();
       var requireConfig = require.s.contexts._.config;
@@ -201,21 +196,19 @@ define('backfin-core', function() {
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
-      
       require(paths, function(Sandbox, main, manifestText) {
         manifest =  manifest || JSON.parse(manifestText || '{}');
         manifest.id = channel;
         
         var options = _.extend(coreOptions, {
           channel : channel, 
-          element : element,
           manifest : manifest,
         });
 
         try {
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
-          main(sandbox, element);
+          main.apply(null, [sandbox].concat(args));
         } catch (e) {
           core.onError(e, channel);
         }
@@ -229,23 +222,22 @@ define('backfin-core', function() {
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          throw err;
+          console.error('failed to load ' + failedId);
         }
         dfd.reject();
       });
-
       return dfd.promise();
     }
 
     isWidgetLoading = true;
 
     for (; i < l; i++) {
-      var widget = list[i];
-      var channel = decamelize(widget.channel);
-      promises.push(load(channel, widget.element));
+      var plugin = list[i];
+      var id = decamelize(plugin.id);
+      promises.push(load(id, plugin.options));
     }
-
     $.when.apply($, promises).done(core.emptyPublishQueue);
+    return promises.length == 1 ? promises[0] : promises;
   };
 
   // Unload a widget (collection of modules) by passing in a named reference

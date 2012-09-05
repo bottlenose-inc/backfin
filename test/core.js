@@ -4,19 +4,16 @@
   var backfin,
       events,
       TEST_CHANNEL = 'test';
-
-
-  
       
   QUnit.testStart(function(){
     backfin = window.core;
+    requirejs.undef()
     backfin.config({
       manifests : [
         { id : 'foobar' },
-        { test : TEST_CHANNEL }
+        { id : TEST_CHANNEL }
       ]
     });
-    
 
     events = backfin.getEvents();
     //verify setup
@@ -94,36 +91,64 @@
       { callback:function() {} }
     ];
 
+    requirejs.undef('plugins/' + TEST_CHANNEL + '/main');
+
+    equal(backfin.getPublishQueueLength(), 0);
     //fake fetching of the foobar 
-    backfin.start({ channel: 'foobar' });
-    backfin.trigger('foobar');
+    backfin.start(TEST_CHANNEL);
+    backfin.trigger(TEST_CHANNEL);
     equal(backfin.getPublishQueueLength(), 1, "should add to publish queue if widget is loading");
   });
 
 
   test('start', function(){
 
-    backfin.start({
-      channel : TEST_CHANNEL
+    throws(
+      function() { backfin.start()},
+      "should throw an error if all the params are not specified"
+    );
+
+    throws(
+      function() { backfin.start({})},
+      "should throw an error if params is an empty object no id" 
+    );
+
+    var promises = backfin.start([{id : 'foo'}, { id : 'bar' }]);
+    equal(promises.length, 2, 'Should return 2 promises when given two plugins to load');
+    var promise = backfin.start([{id : 'foo'}]);
+    ok(promise.fail, 'Should return 1 promise when given one plugin to load'); 
+
+    requirejs.undef('plugins/' + TEST_CHANNEL + '/main');
+    var callback = this.spy();
+    define('plugins/' + TEST_CHANNEL + '/main', function() {
+      return callback;
     });
-    
-    //setTimeout(function(){
-      backfin.start({
-        channel : TEST_CHANNEL
-      });
-    //}, 1000)
-    
-    /*
-    it('should throw an error if all the params are not specified', function () {});
-    it('should throw an error if all the params are not the correct type', function () {});
-    it('should load (require) a widget that corresponds with a channel', function () {});
-    it('should call every callback for the channel, within the correct context', function () {});
-    it('should trigger a requirejs error if the widget does not exist', function (){});
-    */ 
+    backfin.on('main', 'loaded', callback, {});
+    backfin.start(TEST_CHANNEL);
+    ok(callback.called, 'should load (require) a widget that corresponds with a channel');
+
+    requirejs.undef('plugins/' + TEST_CHANNEL + '/main');
+    var callback = this.spy();
+    define('plugins/' + TEST_CHANNEL + '/main', function() {
+      return function(sandbox, args1, args2){
+        callback(args1, args2);
+      }
+    });
+    var args = { foo : 'bar' };
+    backfin.on('main', 'loaded', callback, {});
+    backfin.start(TEST_CHANNEL, 'foo', 'bar');
+    ok(callback.calledWith('foo', 'bar'), 'should pass on the arguments specified to the widget');
+
+    var promise = backfin.start([{id : 'foo'}]);
+    stop();
+    promise.fail(function() {
+      equal(promise.state(), 'rejected', 'Should reject promise for plugins that are not defined');
+      start();
+    }); 
   })
 
   return;
-  
+
   describe('backfin', function () {
 
  
@@ -167,7 +192,7 @@
 
               backfin.publish(TEST_CHANNEL, argument);
 
-              expect(callback).toHaveBeenCalledWith(argument);
+              expect(callback).toHaveBeenCalledWith(fment);
           });
 
       it('should return false if channel has not been defined', function () {
