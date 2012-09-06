@@ -161,6 +161,10 @@ define('backfin-core', function() {
   // * **param:** {Object/Array} an array with objects or single object containing channel and element
   core.start = function(list) {
     var args = [].slice.call(arguments, 1);
+    var hotswap;
+    if(args[0] && args[0].hotswap) {
+      hotswap = true;
+    }
     
     // Allow pair channel & element as params 
     if (typeof list === 'string') {
@@ -192,6 +196,7 @@ define('backfin-core', function() {
       }
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
+      console.log(paths);
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
       require(paths, function(Sandbox, main, manifestText) {
         manifest =  manifest || JSON.parse(manifestText || '{}');
@@ -199,14 +204,15 @@ define('backfin-core', function() {
         
         var options = _.extend(coreOptions, {
           channel : channel, 
-          manifest : manifest,
+          manifest : manifest
         });
 
         try {
           if(plugins[channel]) core.stop(channel);
-
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
+          //if hotswap we take the args from the manifest if any
+          if(hotswap) args = (manifest.hotswap || []);
           main.apply(null, [sandbox].concat(args));
         } catch (e) {
           core.onError(e, channel);
@@ -315,7 +321,7 @@ define('backfin-core', function() {
     for (key in plugins) {
       if (plugins.hasOwnProperty(key)) {
         plugin = plugins[key];
-        results.push({ 
+        results.push({
           manifest : plugin.manifest,
           id : key, 
           views : plugin._registeredViews, 

@@ -29,11 +29,21 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     if(res.less && Object.keys(res.less) &&  window.less) less.refresh();
 
     if(res.plugins) {
+      var manifests = backfin.getManifests();
+      var plugins = {};
+      backfin.getActivityPlugins().forEach(function(plugin) {
+        plugins[plugin.id] = plugin;
+      });
+
       try {
         Object.keys(res.plugins).forEach(function(key) {
-          var id = key.replace('plugins/', '').replace('/main.js', '');
-          self._reloadPlugin(id, res.plugins[key].isNew);
-          console.log(res.plugins);    
+          var id = key.replace('plugins/', '').replace(/\/[^/]*$/, '');
+          var plugin = plugins[id];
+          if(plugin) {
+            self._reloadPlugin(id);
+          } else {
+            backfin.start(id, { hotswap : true });
+          }
         });
       } catch(e) {
         console.warn(e.stack);
