@@ -316,7 +316,7 @@ define('backfin-core', function() {
     console.error('plugin :' + channel + '\n' + err.stack);
   }
 
-  core.getActivityPlugins = function(){
+  core.getActivityPlugins = function(args){
     var results = [], key, plugin;
     for (key in plugins) {
       if (plugins.hasOwnProperty(key)) {
@@ -331,12 +331,25 @@ define('backfin-core', function() {
     return results;
   }
 
-  core.getManifests = function(){
-    var res = []
-    Object.keys(manifests).forEach(function(key){
-      res.push(manifests[key]);
+  core.getManifests = function(options){
+    var _manifests = []
+    Object.keys(_manifests).forEach(function(key){
+      _manifests.push(_manifests[key]);
     });
-    return res;
+
+    var keys = Object.keys(options);
+    return _manifests.filter(function(manifest){
+      //every return true if they all passes
+      return keys.every(function(key) {
+        return manifest[key] == args[key];
+      })
+    });
+
+    
+  }
+
+  core.getManifestById = function(id) {
+    return manifests[id];
   }
 
   return core;
