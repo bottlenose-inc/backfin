@@ -332,7 +332,11 @@ define('backfin-core', function() {
   }
 
   core.getManifests = function(){
-    return manifests
+    var res = []
+    Object.keys(manifests).forEach(function(key){
+      res.push(manifests[key]);
+    });
+    return res;
   }
 
   return core;

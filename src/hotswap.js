@@ -50,10 +50,8 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
       less.refresh();
     })
 
-    
 
     if(res.plugins) {
-      var manifests = backfin.getManifests();
       var plugins = {};
       backfin.getActivityPlugins().forEach(function(plugin) {
         plugins[plugin.id] = plugin;
