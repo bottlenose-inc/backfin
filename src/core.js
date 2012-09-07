@@ -333,12 +333,12 @@ define('backfin-core', function() {
 
   core.getManifests = function(options){
     var _manifests = []
-    Object.keys(_manifests).forEach(function(key){
-      _manifests.push(_manifests[key]);
+    Object.keys(manifests).forEach(function(key){
+      _manifests.push(manifests[key]);
     });
 
     if(!options) return _manifests;
-    
+
     var keys = Object.keys(options);
     return _manifests.filter(function(manifest){
       //every return true if they all passes
