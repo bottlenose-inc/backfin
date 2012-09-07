@@ -337,7 +337,7 @@ define('backfin-core', function() {
       _manifests.push(_manifests[key]);
     });
 
-    var keys = Object.keys(options);
+    var keys = Object.keys(options || {});
     return _manifests.filter(function(manifest){
       //every return true if they all passes
       return keys.every(function(key) {
