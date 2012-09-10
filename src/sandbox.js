@@ -24,12 +24,13 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
     this.models = {};
 
     this.View = Backbone.View.extend({
-      constructor : function(){
+      constructor : function(options){
         this.cid = _.uniqueId('view');
         this._configure(options || {});
         this._ensureElement();
         this.initialize && this.initialize.apply(this, arguments);
         this.delegateEvents();
+        this.el.className = this.className;
         registerView(this);
       }
     });

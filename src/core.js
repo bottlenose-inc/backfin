@@ -223,7 +223,6 @@ define('backfin-core', function() {
           manifest : manifest
         });
 
-
         try {
           if(plugins[channel]) core.stop(channel);
           var sandbox = new Sandbox(options);
