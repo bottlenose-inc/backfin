@@ -28,6 +28,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   }
 
   Hotswap.prototype._handleResponse = function(res) {
+    console.log(res);
     var self = this;
 
     //xxx not perfect should allow for css to reload as well
