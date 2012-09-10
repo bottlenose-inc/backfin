@@ -213,7 +213,6 @@ define('backfin-core', function() {
       }
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
-      console.log(paths);
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
       require(paths, function(Sandbox, main, manifestText) {
         manifest =  manifest || JSON.parse(manifestText || '{}');
@@ -224,13 +223,14 @@ define('backfin-core', function() {
           manifest : manifest
         });
 
+
         try {
           if(plugins[channel]) core.stop(channel);
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
           //if hotswap we take the args from the manifest if any
-          if(hotswap) args = (manifest.hotswap || []);
           main.apply(null, [sandbox].concat(args));
+          if(hotswap) sandbox.trigger('plugin:hotswap');
         } catch (e) {
           core.onError(e, channel);
         }
@@ -271,6 +271,21 @@ define('backfin-core', function() {
   core.stop = function(channel) {
     var file = decamelize(channel);
 
+    var plugin = plugins[channel];
+    if(!plugin) {
+      console.warn('backfin: Plugin not found', channel);
+      return false;
+    }
+
+    plugin._registeredViews.forEach(function(view){
+      view && view.destroy ? view.destroy() : view.remove();
+    });
+
+    plugin._registeredModels.forEach(function(model){
+      model && model.destroy && model.destroy(); 
+    });
+    plugin.trigger('plugin:destroy');
+
     for (var ch in events) {
       if (events.hasOwnProperty(ch)) {
         for (var i = 0; i < events[ch].length; i++) {
@@ -281,18 +296,6 @@ define('backfin-core', function() {
       }
     }
 
-    var plugin = plugins[channel];
-    if(!plugin) {
-      console.warn('backfin: Plugin not found', channel);
-      return false;
-    }
-    plugin._registeredViews.forEach(function(view){
-      view && view.destroy ? view.destroy() : view.remove();
-    });
-
-    plugin._registeredModels.forEach(function(model){
-      model && model.destroy && model.destroy(); 
-    });
     delete plugins[channel];
   };
 

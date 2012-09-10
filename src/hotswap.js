@@ -77,7 +77,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     if(!pluginId) return false;
     backfin.stop(pluginId);
     backfin.unload(pluginId);
-    backfin.start(pluginId);
+    backfin.start(pluginId,  { hotswap : true });
   }
 
   return new Hotswap();
