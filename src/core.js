@@ -71,9 +71,9 @@ define('backfin-core', function() {
       manifests[manifest.id] = manifest;
       if(manifest.buildIn) {
         ids.push(manifest.id);
-        styles = styles.concat((manifest.contentStyles || []).map(function(path){
-          return  manifest.id  + '/' +  path;
-        }));
+        (manifest.stylesheets && manifest.stylesheets.less || []).forEach(function(style){
+          styles.push({ path : manifest.id + '/' + style, type : 'less'  });
+        });
       }
     });
     core._injectStyles(styles)
@@ -82,7 +82,7 @@ define('backfin-core', function() {
 
   core._injectStyles = function(styles) {
     styles.forEach(function(style){
-      var path = '/plugins' + '/' + style;
+      var path = '/plugins' + '/' + style.path;
       var link = document.createElement('link');
       link.id = path;
       link.setAttribute('rel', 'stylesheet/less');
