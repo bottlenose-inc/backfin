@@ -29,29 +29,12 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
 
   Hotswap.prototype._handleResponse = function(res) {
     var self = this;
-    console.log(res);
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {
       Object.keys(res.less).forEach(function(key){
-        var headNode = requirejs.s.head;
-        var link = document.getElementById(key);
-        if(link) {
-          link.href = key + '?bust=' + Date.now();
-          less.refresh();
-          return;
-        }
-
-        var link = document.createElement('link');
-        link.id = key;
-        link.setAttribute('rel', 'stylesheet/less');
-        link.setAttribute('type', 'text/css');
-        link.href = key;
-        headNode.appendChild(link);
-        less.sheets.push(link);
         less.refresh();
       });
     }
-
 
     if(res.plugins) {
       var plugins = {};
@@ -62,6 +45,11 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
       try {
         Object.keys(res.plugins).forEach(function(key) {
           var id = self._getRootPath(key);
+
+          if(key.match(/\.less/)) {
+            return self._reloadPluginStyles(id, key);
+          }
+
           var plugin = plugins[id];
           if(plugin) {
             self._reloadPlugin(id);
@@ -73,6 +61,25 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
         console.warn(e.stack);
       }
     }
+  }
+
+  Hotswap.prototype._reloadPluginStyles = function(pluginId, stylePath) {
+    var headNode = requirejs.s.head;
+    var link = document.getElementById(stylePath);
+    if(link) {
+      link.href = stylePath + '?bust=' + Date.now();
+      less.refresh();
+      return;
+    }
+
+    var link = document.createElement('link');
+    link.id = stylePath;
+    link.setAttribute('rel', 'stylesheet/less');
+    link.setAttribute('type', 'text/css');
+    link.href = stylePath;
+    headNode.appendChild(link);
+    less.sheets.push(link);
+    less.refresh();
   }
 
   Hotswap.prototype._reloadPlugin = function(pluginId, isNew) {
