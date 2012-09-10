@@ -65,17 +65,34 @@ define('backfin-core', function() {
   };
 
   core.config = function(options) {
+    var ids = [], styles = [];
     coreOptions = options;
     (coreOptions.manifests || []).forEach(function(manifest){
       manifests[manifest.id] = manifest;
+      if(manifest.buildIn) {
+        ids.push(manifest.id);
+        styles = styles.concat((manifest.contentStyles || []).map(function(path){
+          return  manifest.id  + '/' +  path;
+        }));
+      }
     });
-
-    var ids = [];
-    (coreOptions.manifests || []).forEach(function(manifest){
-      if(manifest.buildIn) ids.push(manifest.id);
-    });
+    core._injectStyles(styles)
     core.start(ids.map(function(id){ return { id : id } }));
   };
+
+  core._injectStyles = function(styles) {
+    styles.forEach(function(style){
+      var path = '/plugins' + '/' + style;
+      var link = document.createElement('link');
+      link.id = path;
+      link.setAttribute('rel', 'stylesheet/less');
+      link.setAttribute('type', 'text/css');
+      link.href = path;
+      document.head.appendChild(link);
+      less.sheets.push(link);
+    });
+    less.refresh();
+  }
 
   // Subscribe to an event
   //
