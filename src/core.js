@@ -178,6 +178,7 @@ define('backfin-core', function() {
 
   core.triggerPluginEvent = function(plugin, event) {
     var args = [].slice.call(arguments, 2), i, l;
+    if(!events[event]) return;
     for (i = 0, l = events[event].length; i < l; i += 1) {
       try {
         if(events[event][i].subscriber == plugin) {
