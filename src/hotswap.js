@@ -24,7 +24,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   }
 
   Hotswap.prototype._getRootPath = function(key) {
-    return key.replace('plugins/', '').replace(/\/[^/]*$/, '');
+    return key.replace('/plugins/', '').replace(/\/[^/]*$/, '').replace('/', '');
   }
 
   Hotswap.prototype._handleResponse = function(res) {
@@ -45,11 +45,9 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
       try {
         Object.keys(res.plugins).forEach(function(key) {
           var id = self._getRootPath(key);
-
           if(key.match(/\.less/)) {
             return self._reloadPluginStyles(id, key);
           }
-
           var plugin = plugins[id];
           if(plugin) {
             self._reloadPlugin(id);

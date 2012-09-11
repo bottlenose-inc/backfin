@@ -403,6 +403,7 @@ define('backfin-core', function() {
     });
   }
 
+
   core.getManifestById = function(id) {
     return manifests[id];
   }
@@ -419,7 +420,7 @@ define('backfin-core', function() {
     this.getManifests().forEach(function(manifest){
       _events = _events.concat(_normalizeEvents(manifest)); 
     });
-    
+
     _events.forEach(function(e){
       if(id == e.eventType) addCallback(e);
     });
