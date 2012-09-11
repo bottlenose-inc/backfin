@@ -46,7 +46,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
         Object.keys(res.plugins).forEach(function(key) {
           var id = self._getRootPath(key);
           if(key.match(/\.less/)) {
-            return self._reloadPluginStyles(id, key);
+            return self._reloadPluginStyles(id, '/plugins'+key);
           }
           var plugin = plugins[id];
           if(plugin) {
@@ -62,7 +62,6 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   }
 
   Hotswap.prototype._reloadPluginStyles = function(pluginId, stylePath) {
-    /*
     var headNode = requirejs.s.head;
     var link = document.getElementById(stylePath);
     if(link) {
@@ -77,7 +76,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     link.setAttribute('type', 'text/css');
     link.href = stylePath;
     headNode.appendChild(link);
-    less.sheets.push(link);*/
+    less.sheets.push(link);
     less.refresh();
   }
 
