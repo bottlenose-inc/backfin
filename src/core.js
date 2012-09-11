@@ -428,18 +428,14 @@ define('backfin-core', function() {
 
   core.registerEventHook = function(eventId, addCallback, removeCallback) {
     eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
-    
-    
+        
     var _events = [];
     this.getManifests().forEach(function(manifest){
       _events = _events.concat(_normalizeEvents(manifest)); 
     });
     
-
     _events.forEach(function(e){
-      if(e.eventType == eventId)  {
-        addCallback(e);
-      }
+      if(e.eventType == eventId) addCallback(e);
     });
 
     eventHooks[eventId].push({
