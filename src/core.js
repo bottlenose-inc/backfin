@@ -62,13 +62,18 @@ define('backfin-core', function() {
 
   function _removeEventHook(type, event) {
     (eventHooks[type] || []).forEach(function(obj){
-      obj.removeCallback && obj.removeCallback(event);
+      if(obj.eventsIds.indexOf(event.id) != -1) {
+        obj.removeCallback && obj.removeCallback(event);
+      }
     })
   }
 
   function _addEventHook(type, event) {
+    console.log('_addEventHook', type, event);
     (eventHooks[type] || []).forEach(function(obj){
-      obj.addCallback && obj.addCallback(event);
+      if(obj.eventsIds.indexOf(event.id) == -1) {
+        obj.addCallback && obj.addCallback(event);
+      }
     })
   }
 
@@ -423,15 +428,13 @@ define('backfin-core', function() {
 
   core.registerEventHook = function(eventId, addCallback, removeCallback) {
     eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
-    eventHooks[eventId].push({
-      addCallback : addCallback, 
-      removeCallback : removeCallback 
-    });
+    
     
     var _events = [];
     this.getManifests().forEach(function(manifest){
       _events = _events.concat(_normalizeEvents(manifest)); 
     });
+    
 
     _events.forEach(function(e){
       if(e.eventType == eventId)  {
@@ -439,6 +442,11 @@ define('backfin-core', function() {
       }
     });
 
+    eventHooks[eventId].push({
+      eventsIds : _events.map(function(e){ return e.id }),
+      addCallback : addCallback, 
+      removeCallback : removeCallback 
+    });
   }
 
   return core;
