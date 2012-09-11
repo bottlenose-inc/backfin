@@ -164,9 +164,8 @@ define('backfin-core', function() {
 
     var i, l;
     var args = [].slice.call(arguments, 1);
-    if (!events[channel]) {
-      return false;
-    }
+    if (!events[channel]) return false;
+    
     for (i = 0, l = events[channel].length; i < l; i += 1) {
       try {
         events[channel][i]['callback'].apply(this, args);
@@ -174,9 +173,22 @@ define('backfin-core', function() {
         console.error(e.message);
       }
     }
-
     return true;
   };
+
+  core.triggerPluginEvent = function(plugin, event) {
+    var args = [].slice.call(arguments, 2), i, l;
+    for (i = 0, l = events[event].length; i < l; i += 1) {
+      try {
+        if(events[event][i].subscriber == plugin) {
+          events[event][i]['callback'].apply(this, args);
+        }
+      } catch (e) {
+        console.error(e.message);
+      }
+    }
+    return true;
+  }
 
 
   // Empty the list with all stored publish events.
@@ -254,7 +266,7 @@ define('backfin-core', function() {
           plugins[channel] = sandbox;
           //if hotswap we take the args from the manifest if any
           main.apply(null, [sandbox].concat(args));
-          if(hotswap) sandbox.trigger('plugin:hotswap');
+          if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
         } catch (e) {
           core.onError(e, channel);
         }
