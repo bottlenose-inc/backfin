@@ -15,6 +15,7 @@ define('backfin-core', function() {
   var core = {}; // Mediator object
   var events = {}; // Loaded modules and their callbacks
   var plugins = {};
+  var eventHooks = {};
   var manifests = {};
   var coreOptions = {};
   var publishQueue = [];
@@ -57,6 +58,29 @@ define('backfin-core', function() {
   // Is a given variable an object? (via zepto)
   function isObject(obj) {
     return obj instanceof Object;
+  }
+
+  function _removeEventHook(type, event) {
+    (eventHooks[type] || []).forEach(function(obj){
+      obj.removeCallback && obj.removeCallback(event);
+    })
+  }
+
+  function _addEventHook(type, event) {
+    (eventHooks[type] || []).forEach(function(obj){
+      obj.addCallback && obj.addCallback(event);
+    })
+  }
+
+  function _normalizeEvents(manifest) {
+    var events = [];
+    Object.keys(manifest.events || {}).forEach(function(key) {
+      events = manifest.events[key].map(function(e){
+        e.eventType = key;
+        return e;
+      });
+    });
+    return events;
   }
 
   // Get the widgets path
@@ -214,6 +238,7 @@ define('backfin-core', function() {
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
+
       require(paths, function(Sandbox, main, manifestText) {
         manifest =  manifest || JSON.parse(manifestText || '{}');
         manifest.id = channel;
@@ -232,6 +257,17 @@ define('backfin-core', function() {
           if(hotswap) sandbox.trigger('plugin:hotswap');
         } catch (e) {
           core.onError(e, channel);
+        }
+        try {
+        if(manifest.events) {
+          //normalizing the hash object
+          _normalizeEvents(manifest).forEach(function(e){
+            if(hotswap) _removeEventHook(e.eventType, e);
+            _addEventHook(e.eventType, e);
+          });
+        }
+        } catch(e) {
+          console.log(e.stack);
         }
 
         dfd.resolve();
@@ -365,12 +401,32 @@ define('backfin-core', function() {
         return manifest[key] == args[key];
       })
     });
-
-    
   }
 
   core.getManifestById = function(id) {
     return manifests[id];
+  }
+
+  core.registerEventHook = function(id, addCallback, removeCallback) {
+    try {
+    eventHooks[id] = (eventHooks[id] ? eventHooks[id] : []);
+    eventHooks[id].push({
+      addCallback : addCallback, 
+      removeCallback : removeCallback 
+    });
+    
+    var _events = [];
+    this.getManifests().forEach(function(manifest){
+      _events = _events.concat(_normalizeEvents(manifest)); 
+    });
+    
+    _events.forEach(function(e){
+      if(id == e.eventType) addCallback(e);
+    });
+
+    } catch(e) {
+      console.log(e.stack);
+    }
   }
 
   return core;
