@@ -331,7 +331,7 @@ define('backfin-core', function() {
     plugin._registeredModels.forEach(function(model){
       model && model.destroy && model.destroy(); 
     });
-    plugin.trigger('plugin:destroy');
+    core.triggerPluginEvent(channel, 'plugin:destroy');
 
     for (var ch in events) {
       if (events.hasOwnProperty(ch)) {
