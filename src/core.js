@@ -420,10 +420,9 @@ define('backfin-core', function() {
     return manifests[id];
   }
 
-  core.registerEventHook = function(id, addCallback, removeCallback) {
-    try {
-    eventHooks[id] = (eventHooks[id] ? eventHooks[id] : []);
-    eventHooks[id].push({
+  core.registerEventHook = function(eventId, addCallback, removeCallback) {
+    eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
+    eventHooks[eventId].push({
       addCallback : addCallback, 
       removeCallback : removeCallback 
     });
@@ -434,12 +433,11 @@ define('backfin-core', function() {
     });
 
     _events.forEach(function(e){
-      if(id == e.eventType) addCallback(e);
+      if(e.eventType == eventId)  {
+        addCallback(e);
+      }
     });
 
-    } catch(e) {
-      console.log(e.stack);
-    }
   }
 
   return core;
