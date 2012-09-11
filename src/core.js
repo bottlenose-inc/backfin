@@ -5,7 +5,7 @@
 //
 // * [Patterns For Large-Scale JavaScript Application Architecture](http://addyosmani.com/largescalejavascript/)
 // * [Large-scale JavaScript Application Architecture Slides](http://speakerdeck.com/u/addyosmani/p/large-scale-javascript-application-architecture)
-// * [Building Large-Scale jQuery Applications](http://addyosmani.com/blog/large-scale-jquery/)
+// * [builtIng Large-Scale jQuery Applications](http://addyosmani.com/blog/large-scale-jquery/)
 // * [Nicholas Zakas: Scalable JavaScript Application Architecture](http://www.youtube.com/watch?v=vXjVFPosQHw&feature=youtube_gdata_player)
 // * [Writing Modular JavaScript: New Premium Tutorial](http://net.tutsplus.com/tutorials/javascript-ajax/writing-modular-javascript-new-premium-tutorial/)
 // include 'deferred' if using zepto
@@ -93,7 +93,7 @@ define('backfin-core', function() {
     coreOptions = options;
     (coreOptions.manifests || []).forEach(function(manifest){
       manifests[manifest.id] = manifest;
-      if(manifest.buildIn) {
+      if(manifest.builtIn) {
         ids.push(manifest.id);
         (manifest.stylesheets && manifest.stylesheets.less || []).forEach(function(style){
           styles.push({ path : manifest.id + '/' + style, type : 'less'  });

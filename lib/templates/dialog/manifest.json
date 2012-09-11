@@ -1,5 +1,10 @@
 {
   "name": "<%= name %>",
   "description": "",
-  "builtIn": false
+  "builtIn": true,
+  "stylesheets": {
+  	"less": [
+  	  "main.less"
+  	]
+  }
 }

@@ -62,6 +62,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   }
 
   Hotswap.prototype._reloadPluginStyles = function(pluginId, stylePath) {
+    /*
     var headNode = requirejs.s.head;
     var link = document.getElementById(stylePath);
     if(link) {
@@ -76,7 +77,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     link.setAttribute('type', 'text/css');
     link.href = stylePath;
     headNode.appendChild(link);
-    less.sheets.push(link);
+    less.sheets.push(link);*/
     less.refresh();
   }
 
