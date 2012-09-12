@@ -5,7 +5,7 @@
 //
 // * [Patterns For Large-Scale JavaScript Application Architecture](http://addyosmani.com/largescalejavascript/)
 // * [Large-scale JavaScript Application Architecture Slides](http://speakerdeck.com/u/addyosmani/p/large-scale-javascript-application-architecture)
-// * [Building Large-Scale jQuery Applications](http://addyosmani.com/blog/large-scale-jquery/)
+// * [builtIng Large-Scale jQuery Applications](http://addyosmani.com/blog/large-scale-jquery/)
 // * [Nicholas Zakas: Scalable JavaScript Application Architecture](http://www.youtube.com/watch?v=vXjVFPosQHw&feature=youtube_gdata_player)
 // * [Writing Modular JavaScript: New Premium Tutorial](http://net.tutsplus.com/tutorials/javascript-ajax/writing-modular-javascript-new-premium-tutorial/)
 // include 'deferred' if using zepto
@@ -15,6 +15,7 @@ define('backfin-core', function() {
   var core = {}; // Mediator object
   var events = {}; // Loaded modules and their callbacks
   var plugins = {};
+  var eventHooks = {};
   var manifests = {};
   var coreOptions = {};
   var publishQueue = [];
@@ -59,24 +60,68 @@ define('backfin-core', function() {
     return obj instanceof Object;
   }
 
+  function _removeEventHook(type, event) {
+    (eventHooks[type] || []).forEach(function(obj){
+      if(obj.eventsIds.indexOf(event.id) != -1) {
+        obj.removeCallback && obj.removeCallback(event);
+      }
+    })
+  }
+
+  function _addEventHook(type, event) {
+    console.log('_addEventHook', type, event);
+    (eventHooks[type] || []).forEach(function(obj){
+      if(obj.eventsIds.indexOf(event.id) == -1) {
+        obj.addCallback && obj.addCallback(event);
+      }
+    })
+  }
+
+  function _normalizeEvents(manifest) {
+    var events = [];
+    Object.keys(manifest.events || {}).forEach(function(key) {
+      events = manifest.events[key].map(function(e){
+        e.eventType = key;
+        return e;
+      });
+    });
+    return events;
+  }
+
   // Get the widgets path
   core.getWidgetsPath = function() {
     return WIDGETS_PATH;
   };
 
   core.config = function(options) {
+    var ids = [], styles = [];
     coreOptions = options;
     (coreOptions.manifests || []).forEach(function(manifest){
       manifests[manifest.id] = manifest;
+      if(manifest.builtIn) {
+        ids.push(manifest.id);
+        (manifest.stylesheets && manifest.stylesheets.less || []).forEach(function(style){
+          styles.push({ path : manifest.id + '/' + style, type : 'less'  });
+        });
+      }
     });
-
-    var ids = [];
-    (coreOptions.manifests || []).forEach(function(manifest){
-      if(manifest.buildIn) ids.push(manifest.id);
-    });
+    core._injectStyles(styles)
     core.start(ids.map(function(id){ return { id : id } }));
   };
 
+  core._injectStyles = function(styles) {
+    styles.forEach(function(style){
+      var path = '/plugins' + '/' + style.path;
+      var link = document.createElement('link');
+      link.id = path;
+      link.setAttribute('rel', 'stylesheet/less');
+      link.setAttribute('type', 'text/css');
+      link.href = path;
+      document.head.appendChild(link);
+      less.sheets.push(link);
+    });
+    less.refresh();
+  }
 
   // Subscribe to an event
   //
@@ -124,9 +169,8 @@ define('backfin-core', function() {
 
     var i, l;
     var args = [].slice.call(arguments, 1);
-    if (!events[channel]) {
-      return false;
-    }
+    if (!events[channel]) return false;
+    
     for (i = 0, l = events[channel].length; i < l; i += 1) {
       try {
         events[channel][i]['callback'].apply(this, args);
@@ -134,9 +178,23 @@ define('backfin-core', function() {
         console.error(e.message);
       }
     }
-
     return true;
   };
+
+  core.triggerPluginEvent = function(plugin, event) {
+    var args = [].slice.call(arguments, 2), i, l;
+    if(!events[event]) return;
+    for (i = 0, l = events[event].length; i < l; i += 1) {
+      try {
+        if(events[event][i].subscriber == plugin) {
+          events[event][i]['callback'].apply(this, args);
+        }
+      } catch (e) {
+        console.error(e.message);
+      }
+    }
+    return true;
+  }
 
 
   // Empty the list with all stored publish events.
@@ -162,6 +220,10 @@ define('backfin-core', function() {
   // * **param:** {Object/Array} an array with objects or single object containing channel and element
   core.start = function(list) {
     var args = [].slice.call(arguments, 1);
+    var hotswap;
+    if(args[0] && args[0].hotswap) {
+      hotswap = true;
+    }
     
     // Allow pair channel & element as params 
     if (typeof list === 'string') {
@@ -172,9 +234,7 @@ define('backfin-core', function() {
     }
     
     // Allow a single object as param
-    if (isObject(list) && !Array.isArray(list)) {
-      list = [list];
-    }
+    if (isObject(list) && !Array.isArray(list)) list = [list];
 
     if (!Array.isArray(list)) {
       throw new Error('Channel must be defined as an array');
@@ -196,21 +256,36 @@ define('backfin-core', function() {
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
+
       require(paths, function(Sandbox, main, manifestText) {
         manifest =  manifest || JSON.parse(manifestText || '{}');
         manifest.id = channel;
         
         var options = _.extend(coreOptions, {
           channel : channel, 
-          manifest : manifest,
+          manifest : manifest
         });
 
         try {
+          if(plugins[channel]) core.stop(channel);
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
+          //if hotswap we take the args from the manifest if any
           main.apply(null, [sandbox].concat(args));
+          if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
         } catch (e) {
           core.onError(e, channel);
+        }
+        try {
+        if(manifest.events) {
+          //normalizing the hash object
+          _normalizeEvents(manifest).forEach(function(e){
+            if(hotswap) _removeEventHook(e.eventType, e);
+            _addEventHook(e.eventType, e);
+          });
+        }
+        } catch(e) {
+          console.log(e.stack);
         }
 
         dfd.resolve();
@@ -249,6 +324,21 @@ define('backfin-core', function() {
   core.stop = function(channel) {
     var file = decamelize(channel);
 
+    var plugin = plugins[channel];
+    if(!plugin) {
+      console.warn('backfin: Plugin not found', channel);
+      return false;
+    }
+
+    plugin._registeredViews.forEach(function(view){
+      view && view.destroy ? view.destroy() : view.remove();
+    });
+
+    plugin._registeredModels.forEach(function(model){
+      model && model.destroy && model.destroy(); 
+    });
+    core.triggerPluginEvent(channel, 'plugin:destroy');
+
     for (var ch in events) {
       if (events.hasOwnProperty(ch)) {
         for (var i = 0; i < events[ch].length; i++) {
@@ -259,19 +349,6 @@ define('backfin-core', function() {
       }
     }
 
-    // Remove all modules under a widget path (e.g widgets/todos)
-    core.unload('plugins/' + file);
-
-    var plugin = plugins[channel];
-    if(!plugin) return console.log('plugin not found');
-
-    plugin._registeredViews.forEach(function(view){
-      view && view.destroy ? view.destroy() : view.remove();
-    });
-
-    plugin._registeredModels.forEach(function(model){
-      model && model.destroy && model.destroy(); 
-    });
     delete plugins[channel];
   };
 
@@ -312,12 +389,12 @@ define('backfin-core', function() {
     console.error('plugin :' + channel + '\n' + err.stack);
   }
 
-  core.getActivityPlugins = function(){
+  core.getActivityPlugins = function(args){
     var results = [], key, plugin;
     for (key in plugins) {
       if (plugins.hasOwnProperty(key)) {
         plugin = plugins[key];
-        results.push({ 
+        results.push({
           manifest : plugin.manifest,
           id : key, 
           views : plugin._registeredViews, 
@@ -327,15 +404,50 @@ define('backfin-core', function() {
     return results;
   }
 
-  core.getManifests = function(){
-    return manifests
+  core.getManifests = function(options){
+    var _manifests = []
+    Object.keys(manifests).forEach(function(key){
+      _manifests.push(manifests[key]);
+    });
+
+    if(!options) return _manifests;
+
+    var keys = Object.keys(options);
+    return _manifests.filter(function(manifest){
+      //every return true if they all passes
+      return keys.every(function(key) {
+        return manifest[key] == args[key];
+      })
+    });
+  }
+
+
+  core.getManifestById = function(id) {
+    return manifests[id];
+  }
+
+  core.registerEventHook = function(eventId, addCallback, removeCallback) {
+    eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
+        
+    var _events = [];
+    this.getManifests().forEach(function(manifest){
+      _events = _events.concat(_normalizeEvents(manifest)); 
+    });
+    
+    _events.forEach(function(e){
+      if(e.eventType == eventId) addCallback(e);
+    });
+
+    eventHooks[eventId].push({
+      eventsIds : _events.map(function(e){ return e.id }),
+      addCallback : addCallback, 
+      removeCallback : removeCallback 
+    });
   }
 
   return core;
 });
-define('backfin-hotswap', ['backfin-core'], function(){
-  /*
-  console.log(1);
+define('backfin-hotswap', ['backfin-core'], function(backfin){
   
   function Hotswap(options) {
     options || (options = {});
@@ -348,142 +460,83 @@ define('backfin-hotswap', ['backfin-core'], function(){
   }
 
   Hotswap.prototype._connect = function() {
-    var socket = new WebSocket('ws://' + this.options.server.replace('http', ''));
-    var self = this;
-    socket.onclose = function(){
-      console.log('[Hotswap] socket '+socket.readyState+' (Closed)');
-      setTimeout(function(){
-        self._connect();
-      }, 1000);
-      delete socket;
-    };
-    socket.onmessage = self._parseMessage.bind(this);
-  }
-
-  Hotswap.prototype._parseMessage = function(msg) {
-    var str = msg.data, controlChar = str[0], data = str.slice(1);
-    switch(controlChar){
-      case 'c':
-      if(str.indexOf('less/') != -1) {
-        $('link').each(function(i,link) {
-          console.log(link);
-          if(link.href.indexOf('less') != -1) {
-            link.href = link.href.replace(/\?.+/ig, 't=' + Date.now());
-          }
-        })
-        return;
-      }
-      var path = str.slice(1).replace(this.options.rootPath, '').replace('.js','');
-      this._reloadView(path);
-      break;
-    }
-  }
-
-  Hotswap.prototype._reloadView = function(path) {
-    requirejs.undef(path);
-    require([path], function(newView){
-      return newView.prototype._onHotswap(newView);
-    });
-  }
-
-  window.bfHotswap = new Hotswap();*/
-  
-  if(!window.location.host || !window.location.host.match(/local/)) { return; }
-  
-  var hotswapErrorDialog = null;
-  var hotswapFirstTime = true;
-
-  var hotswapByPath = function(path, isNew) {
-    if(path.match(/manifest\.json$/) && isNew) {
-      var md = path.match(/\/(.+)\/manifest\.json/);
-      if(!md || !md[1]) { return; }
-      console.log("Hotswapping [new] plugin: ", plugin.id);
-      backfin.start({element: '#body', channel: md[1]});
-    } else {
-      backfin.getActivityPlugins().forEach(function(plugin) { 
-        var id = path.slice(1, plugin.id.length+1);
-        if(id == plugin.id) {
-          console.log("Hotswapping [existing] plugin: ", plugin.id);
-          backfin.stop(id)
-          backfin.start({element: '#body', channel: id});
-        }
-      });
-    }
-  };
-  
-  var processChanges = function(res) {
-    if(res.less && _.keys(res.less).length && less) { less.refresh(); }
-    if(res.plugins && _.keys(res.plugins) && window.backfin) {
-      try {
-        _.keys(res.plugins).forEach(function(key) {
-          if(res.plugins[key].data) {
-            hotswapByPath(res.plugins[key].path, res.plugins[key].isNew);
-          }
-          if(hotswapErrorDialog) {
-            hotswapErrorDialog.close();
-            hotswapErrorDialog.remove();
-            delete hotswapErrorDialog;
-          }
-        });
-      } catch(e) {
-        if(hotswapErrorDialog) {
-          hotswapErrorDialog.close();
-          hotswapErrorDialog.remove();
-          delete hotswapErrorDialog;
-        }
-        hotswapErrorDialog = new bn.views.ErrorDialog('hotswap-error', e);
-        hotswapErrorDialog.open();
-      }
-    }
-  }
-
-  var checkForChanges = function() {
     var start = new Date();
-    
     var def = $.ajax({
        url: 'http://localhost:8077/update.json',
        contentType : 'application/json',
        type : 'GET'
     });
+    def.then(function(res){
+      this._connect();
+      this._handleResponse(res);
+    }.bind(this), this._connect.bind(this)); 
+  }
 
-    def.done(function(res) {
-      processChanges(res);
-      //if((new Date() - start) < (50*1000)) {
-      //  setTimeout(checkForChanges, 5000);
-      //} else {
-        checkForChanges();
-      //}
-    });
-    
-    def.error(function() {
-      setTimeout(function() {
-        startCodeStreaming();
-      }, 1000)
-    });
-  };
-  
-  var startCodeStreaming = function() {
+  Hotswap.prototype._getRootPath = function(key) {
+    return key.replace('/plugins/', '').replace(/\/[^/]*$/, '').replace('/', '');
+  }
 
-    var def = $.ajax({
-       url: 'http://localhost:8077/init.json',
-       contentType : 'application/json',
-       type : 'GET'
-    });
-    
-    def.done(function(res) {
-      $.showNotice("New code streaming environment detected");
-      checkForChanges();
-    });
-    
-    def.error(function() {
-      setTimeout(function() {
-        startCodeStreaming();
-      }, 300)
-    });
-  };
+  Hotswap.prototype._handleResponse = function(res) {
+    var self = this;
+    //xxx not perfect should allow for css to reload as well
+    if(res.less && Object.keys(res.less) && window.less) {
+      Object.keys(res.less).forEach(function(key){
+        less.refresh();
+      });
+    }
 
-  startCodeStreaming();
+    if(res.plugins) {
+      var plugins = {};
+      backfin.getActivityPlugins().forEach(function(plugin) {
+        plugins[plugin.id] = plugin;
+      });
 
+      try {
+        Object.keys(res.plugins).forEach(function(key) {
+          var id = self._getRootPath(key);
+          if(key.match(/\.less/)) {
+            return self._reloadPluginStyles(id, '/plugins'+key);
+          }
+          var plugin = plugins[id];
+          if(plugin) {
+            self._reloadPlugin(id);
+          } else {
+            backfin.start(id, { hotswap : true });
+          }
+        });
+      } catch(e) {
+        console.warn(e.stack);
+      }
+    }
+  }
+
+  Hotswap.prototype._reloadPluginStyles = function(pluginId, stylePath) {
+    var headNode = requirejs.s.head;
+    var link = document.getElementById(stylePath);
+    if(link) {
+      link.href = stylePath + '?bust=' + Date.now();
+      less.refresh();
+      return;
+    }
+
+    var link = document.createElement('link');
+    link.id = stylePath;
+    link.setAttribute('rel', 'stylesheet/less');
+    link.setAttribute('type', 'text/css');
+    link.href = stylePath;
+    headNode.appendChild(link);
+    less.sheets.push(link);
+    less.refresh();
+  }
+
+  Hotswap.prototype._reloadPlugin = function(pluginId, isNew) {
+    if(!pluginId) return false;
+    backfin.stop(pluginId);
+    backfin.unload(pluginId);
+    backfin.start(pluginId,  { hotswap : true });
+  }
+
+  return new Hotswap();
 });
 
 
@@ -515,9 +568,14 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
     this.models = {};
 
     this.View = Backbone.View.extend({
-      constructor : function(){
-        registerView(this);
+      constructor : function(options){
+        this.cid = _.uniqueId('view');
+        this._configure(options || {});
+        this._ensureElement();
         this.initialize && this.initialize.apply(this, arguments);
+        this.delegateEvents();
+        this.el.className = this.className;
+        registerView(this);
       }
     });
 
