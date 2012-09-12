@@ -62,16 +62,18 @@ define('backfin-core', function() {
 
   function _removeEventHook(type, event) {
     (eventHooks[type] || []).forEach(function(obj){
-      if(obj.eventsIds.indexOf(event.id) != -1) {
+      var index = obj.eventsIds.indexOf(event.id)
+      if(index != -1) {
+        obj.eventsIds.splice(index, 1);
         obj.removeCallback && obj.removeCallback(event);
       }
     })
   }
 
   function _addEventHook(type, event) {
-    console.log('_addEventHook', type, event);
     (eventHooks[type] || []).forEach(function(obj){
       if(obj.eventsIds.indexOf(event.id) == -1) {
+        obj.eventsIds.push(event.id);
         obj.addCallback && obj.addCallback(event);
       }
     })
