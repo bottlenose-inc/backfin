@@ -82,10 +82,10 @@ define('backfin-core', function() {
   function _normalizeEvents(manifest) {
     var events = [];
     Object.keys(manifest.events || {}).forEach(function(key) {
-      events = manifest.events[key].map(function(e){
+      events = events.concat(manifest.events[key].map(function(e){
         e.eventType = key;
         return e;
-      });
+      }));
     });
     return events;
   }
@@ -447,6 +447,7 @@ define('backfin-core', function() {
       removeCallback : removeCallback 
     });
   }
+
 
   return core;
 });
