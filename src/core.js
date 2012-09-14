@@ -112,6 +112,7 @@ define('backfin-core', function() {
   };
 
   core._injectStyles = function(styles) {
+    if(!window.less) return;
     styles.forEach(function(style){
       var path = '/plugins' + '/' + style.path;
       var link = document.createElement('link');
@@ -177,7 +178,7 @@ define('backfin-core', function() {
       try {
         events[channel][i]['callback'].apply(this, args);
       } catch (e) {
-        console.error(e.message);
+        console.error(e.stack);
       }
     }
     return true;
@@ -192,7 +193,7 @@ define('backfin-core', function() {
           events[event][i]['callback'].apply(this, args);
         }
       } catch (e) {
-        console.error(e.message);
+        console.error(e.stack);
       }
     }
     return true;
