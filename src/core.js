@@ -257,6 +257,8 @@ define('backfin-core', function() {
         widgetsPath = requireConfig.paths.widgets;
       }
 
+      coreOptions.clearError && coreOptions.clearError();
+
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
 
@@ -300,7 +302,11 @@ define('backfin-core', function() {
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          console.error('failed to load ' + failedId);
+          if(coreOptions.onError) {
+            coreOptions.onError(failedId, err);
+          } else {
+            console.warn('failed to load ' + failedId); 
+          }
         }
         dfd.reject();
       });
