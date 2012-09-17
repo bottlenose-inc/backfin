@@ -1,5 +1,7 @@
 define('backfin-hotswap', ['backfin-core'], function(backfin){
-  
+
+  console.log("backfin-hotswap...")
+
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
@@ -28,6 +30,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   }
 
   Hotswap.prototype._handleResponse = function(res) {
+          console.log("Hotswapping _handleResponse: ", res)
     var self = this;
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {

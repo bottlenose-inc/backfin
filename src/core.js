@@ -12,6 +12,8 @@
 define('backfin-core', function() {
   "use strict";
 
+  console.log("backfin-core...")
+
   var core = {}; // Mediator object
   var events = {}; // Loaded modules and their callbacks
   var plugins = {};
@@ -280,13 +282,13 @@ define('backfin-core', function() {
           core.onError(e, channel);
         }
         try {
-        if(manifest.events) {
-          //normalizing the hash object
-          _normalizeEvents(manifest).forEach(function(e){
-            if(hotswap) _removeEventHook(e.eventType, e);
-            _addEventHook(e.eventType, e);
-          });
-        }
+          if(manifest.events) {
+            //normalizing the hash object
+            _normalizeEvents(manifest).forEach(function(e){
+              if(hotswap) _removeEventHook(e.eventType, e);
+              _addEventHook(e.eventType, e);
+            });
+          }
         } catch(e) {
           console.log(e.stack);
         }
@@ -341,6 +343,14 @@ define('backfin-core', function() {
       model && model.destroy && model.destroy(); 
     });
     core.triggerPluginEvent(channel, 'plugin:destroy');
+
+    var manifest = plugin.manifest;
+    if(manifest.events) {
+      //normalizing the hash object
+      _normalizeEvents(manifest).forEach(function(e){
+        _removeEventHook(e.eventType, e);
+      });
+    }
 
     for (var ch in events) {
       if (events.hasOwnProperty(ch)) {
