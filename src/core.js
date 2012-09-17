@@ -12,8 +12,6 @@
 define('backfin-core', function() {
   "use strict";
 
-  console.log("backfin-core...")
-
   var core = {}; // Mediator object
   var events = {}; // Loaded modules and their callbacks
   var plugins = {};

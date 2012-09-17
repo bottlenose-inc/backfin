@@ -1,7 +1,5 @@
 define('backfin-hotswap', ['backfin-core'], function(backfin){
 
-  console.log("backfin-hotswap...")
-
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
