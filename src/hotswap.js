@@ -37,22 +37,26 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     }
 
     if(res.plugins) {
-      var plugins = {};
-      backfin.getActivityPlugins().forEach(function(plugin) {
-        plugins[plugin.id] = plugin;
-      });
 
       try {
         Object.keys(res.plugins).forEach(function(key) {
-          var id = self._getRootPath(key);
+          var possiblePluginId = self._getRootPath(key);
+          var plugin = null;
+          backfin.getActivityPlugins().forEach(function(activePlugin) {
+            if(possiblePluginId.indexOf(activePlugin.id) == 0) {
+              plugin = activePlugin;
+            }
+          });
+
           if(key.match(/\.less/)) {
-            return self._reloadPluginStyles(id, '/plugins'+key);
+            return self._reloadPluginStyles(plugin.id, '/plugins'+key);
           }
-          var plugin = plugins[id];
+
+          console.log("Plugin id: ", plugin.id);
           if(plugin) {
-            self._reloadPlugin(id);
+            self._reloadPlugin(plugin.id);
           } else {
-            backfin.start(id, { hotswap : true });
+            backfin.start(plugin.id, { hotswap : true });
           }
         });
       } catch(e) {
