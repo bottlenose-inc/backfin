@@ -40,6 +40,13 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
 
       try {
         Object.keys(res.plugins).forEach(function(key) {
+
+
+          if(key.match(/\.swp$/)) {
+            return;
+          }
+
+
           var possiblePluginId = self._getRootPath(key);
           var plugin = null;
           backfin.getActivityPlugins().forEach(function(activePlugin) {
