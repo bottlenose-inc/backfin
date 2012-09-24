@@ -73,6 +73,10 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
             return;
           }   
 
+          if(key.match(/\~$/)) {
+            return;
+          }   
+
           this._processFileChanges(key);
         }.bind(this));
       } catch(e) {
