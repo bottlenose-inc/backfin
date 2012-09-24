@@ -8,6 +8,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     if(window.location.href.indexOf('local') != -1) {
       this._connect();
     }
+    this.busyFiles = {};
   }
 
   Hotswap.prototype._connect = function() {
@@ -27,8 +28,35 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     return key.replace('/plugins/', '').replace(/\/[^/]*$/, '').replace('/', '');
   }
 
+  Hotswap.prototype._processFileChanges = function(filePath) {
+    if(this.busyFiles[filePath]) {
+      return setTimeout(function() { this._processFileChanges(filePath) }.bind(this), 100);
+    }
+    this.busyFiles[filePath] = true;
+    var possiblePluginId = this._getRootPath(filePath);
+    var plugin = null;
+    backfin.getActivityPlugins().forEach(function(activePlugin) {
+      if(possiblePluginId.indexOf(activePlugin.id) == 0) {
+        plugin = activePlugin;
+      }   
+    });
+
+    if(filePath.match(/\.less/)) {
+      this.busyFiles[filePath] = false;
+      return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
+    }   
+
+    if(plugin) {
+      console.log("Reloading existing plugin: ", plugin.id);
+      this._reloadPlugin(plugin.id);
+    } else {
+      console.log("Starting fresh newly detected plugin: ", possiblePluginId);
+      backfin.start(possiblePluginId, { hotswap : true }); 
+    }
+    this.busyFiles[filePath] = false;
+  }
+
   Hotswap.prototype._handleResponse = function(res) {
-    var self = this;
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {
       Object.keys(res.less).forEach(function(key){
@@ -41,31 +69,12 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
       try {
         Object.keys(res.plugins).forEach(function(key) {
 
-
           if(key.match(/\.swp$/)) {
             return;
-          }
+          }   
 
-
-          var possiblePluginId = self._getRootPath(key);
-          var plugin = null;
-          backfin.getActivityPlugins().forEach(function(activePlugin) {
-            if(possiblePluginId.indexOf(activePlugin.id) == 0) {
-              plugin = activePlugin;
-            }
-          });
-
-          if(key.match(/\.less/)) {
-            return self._reloadPluginStyles(plugin.id, '/plugins'+key);
-          }
-
-          console.log("Plugin id: ", plugin.id);
-          if(plugin) {
-            self._reloadPlugin(plugin.id);
-          } else {
-            backfin.start(plugin.id, { hotswap : true });
-          }
-        });
+          this._processFileChanges(key);
+        }.bind(this));
       } catch(e) {
         console.warn(e.stack);
       }
