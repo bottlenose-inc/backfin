@@ -35,7 +35,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     this.busyFiles[filePath] = true;
     var possiblePluginId = this._getRootPath(filePath);
     var plugin = null;
-    backfin.getActivityPlugins().forEach(function(activePlugin) {
+    backfin.getActivePlugins().forEach(function(activePlugin) {
       if(possiblePluginId.indexOf(activePlugin.id) == 0) {
         plugin = activePlugin;
       }   
@@ -44,14 +44,14 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     if(filePath.match(/\.less/)) {
       this.busyFiles[filePath] = false;
       return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
-    }   
+    }
 
     if(plugin) {
       console.log("Reloading existing plugin: ", plugin.id);
       this._reloadPlugin(plugin.id);
     } else {
       console.log("Starting fresh newly detected plugin: ", possiblePluginId);
-      backfin.start(possiblePluginId, { hotswap : true }); 
+      this._reloadPlugin(possiblePluginId);
     }
     this.busyFiles[filePath] = false;
   }
@@ -63,20 +63,11 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
         less.refresh();
       });
     }
-
     if(res.plugins) {
-
       try {
         Object.keys(res.plugins).forEach(function(key) {
-
-          if(key.match(/\.swp$/)) {
-            return;
-          }   
-
-          if(key.match(/\~$/)) {
-            return;
-          }   
-
+          if(key.match(/\.swp$/)) return;
+          if(key.match(/\~$/)) return;
           this._processFileChanges(key);
         }.bind(this));
       } catch(e) {
@@ -104,7 +95,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     less.refresh();
   }
 
-  Hotswap.prototype._reloadPlugin = function(pluginId, isNew) {
+  Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
     backfin.stop(pluginId);
     backfin.unload(pluginId);

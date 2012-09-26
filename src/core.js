@@ -261,8 +261,10 @@ define('backfin-core', function() {
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
+      console.log(paths);
 
       require(paths, function(Sandbox, main, manifestText) {
+        console.log(channel);
         manifest =  manifest || JSON.parse(manifestText || '{}');
         manifest.id = channel;
         
@@ -295,6 +297,7 @@ define('backfin-core', function() {
 
         dfd.resolve();
       }, function(err) {
+        console.log(err.stack);
         if (err.requireType === 'timeout') {
           console.warn('Could not load module ' + err.requireModules);
         } else {
@@ -396,6 +399,12 @@ define('backfin-core', function() {
         require.undef(key);
       }
     }
+    var requireConfig = require.s.contexts._.config;
+    var widgetsPath = this.getWidgetsPath();
+    if(requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
+      widgetsPath = requireConfig.paths.widgets;
+    }
+    require.undef(widgetsPath + '/' + channel + '/main');
   };
 
   core.getEvents = function() {
@@ -406,7 +415,7 @@ define('backfin-core', function() {
     console.error('plugin :' + channel + '\n' + err.stack);
   }
 
-  core.getActivityPlugins = function(args){
+  core.getActivePlugins = function(args){
     var results = [], key, plugin;
     for (key in plugins) {
       if (plugins.hasOwnProperty(key)) {
