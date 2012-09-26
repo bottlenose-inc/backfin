@@ -62,16 +62,18 @@ define('backfin-core', function() {
 
   function _removeEventHook(type, event) {
     (eventHooks[type] || []).forEach(function(obj){
-      if(obj.eventsIds.indexOf(event.id) != -1) {
+      var index = obj.eventsIds.indexOf(event.id)
+      if(index != -1) {
+        obj.eventsIds.splice(index, 1);
         obj.removeCallback && obj.removeCallback(event);
       }
     })
   }
 
   function _addEventHook(type, event) {
-    console.log('_addEventHook', type, event);
     (eventHooks[type] || []).forEach(function(obj){
       if(obj.eventsIds.indexOf(event.id) == -1) {
+        obj.eventsIds.push(event.id);
         obj.addCallback && obj.addCallback(event);
       }
     })
@@ -80,10 +82,10 @@ define('backfin-core', function() {
   function _normalizeEvents(manifest) {
     var events = [];
     Object.keys(manifest.events || {}).forEach(function(key) {
-      events = manifest.events[key].map(function(e){
+      events = events.concat(manifest.events[key].map(function(e){
         e.eventType = key;
         return e;
-      });
+      }));
     });
     return events;
   }
@@ -110,6 +112,7 @@ define('backfin-core', function() {
   };
 
   core._injectStyles = function(styles) {
+    if(!window.less) return;
     styles.forEach(function(style){
       var path = '/plugins' + '/' + style.path;
       var link = document.createElement('link');
@@ -175,7 +178,7 @@ define('backfin-core', function() {
       try {
         events[channel][i]['callback'].apply(this, args);
       } catch (e) {
-        console.error(e.message);
+        console.error(e.stack);
       }
     }
     return true;
@@ -190,7 +193,7 @@ define('backfin-core', function() {
           events[event][i]['callback'].apply(this, args);
         }
       } catch (e) {
-        console.error(e.message);
+        console.error(e.stack);
       }
     }
     return true;
@@ -254,10 +257,14 @@ define('backfin-core', function() {
         widgetsPath = requireConfig.paths.widgets;
       }
 
+      coreOptions.clearError && coreOptions.clearError();
+
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
+      console.log(paths);
 
       require(paths, function(Sandbox, main, manifestText) {
+        console.log(channel);
         manifest =  manifest || JSON.parse(manifestText || '{}');
         manifest.id = channel;
         
@@ -277,19 +284,20 @@ define('backfin-core', function() {
           core.onError(e, channel);
         }
         try {
-        if(manifest.events) {
-          //normalizing the hash object
-          _normalizeEvents(manifest).forEach(function(e){
-            if(hotswap) _removeEventHook(e.eventType, e);
-            _addEventHook(e.eventType, e);
-          });
-        }
+          if(manifest.events) {
+            //normalizing the hash object
+            _normalizeEvents(manifest).forEach(function(e){
+              if(hotswap) _removeEventHook(e.eventType, e);
+              _addEventHook(e.eventType, e);
+            });
+          }
         } catch(e) {
           console.log(e.stack);
         }
 
         dfd.resolve();
       }, function(err) {
+        console.log(err.stack);
         if (err.requireType === 'timeout') {
           console.warn('Could not load module ' + err.requireModules);
         } else {
@@ -297,7 +305,11 @@ define('backfin-core', function() {
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          console.error('failed to load ' + failedId);
+          if(coreOptions.onError) {
+            coreOptions.onError(failedId, err);
+          } else {
+            console.warn('failed to load ' + failedId); 
+          }
         }
         dfd.reject();
       });
@@ -339,6 +351,14 @@ define('backfin-core', function() {
     });
     core.triggerPluginEvent(channel, 'plugin:destroy');
 
+    var manifest = plugin.manifest;
+    if(manifest.events) {
+      //normalizing the hash object
+      _normalizeEvents(manifest).forEach(function(e){
+        _removeEventHook(e.eventType, e);
+      });
+    }
+
     for (var ch in events) {
       if (events.hasOwnProperty(ch)) {
         for (var i = 0; i < events[ch].length; i++) {
@@ -379,6 +399,12 @@ define('backfin-core', function() {
         require.undef(key);
       }
     }
+    var requireConfig = require.s.contexts._.config;
+    var widgetsPath = this.getWidgetsPath();
+    if(requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
+      widgetsPath = requireConfig.paths.widgets;
+    }
+    require.undef(widgetsPath + '/' + channel + '/main');
   };
 
   core.getEvents = function() {
@@ -389,7 +415,7 @@ define('backfin-core', function() {
     console.error('plugin :' + channel + '\n' + err.stack);
   }
 
-  core.getActivityPlugins = function(args){
+  core.getActivePlugins = function(args){
     var results = [], key, plugin;
     for (key in plugins) {
       if (plugins.hasOwnProperty(key)) {
@@ -445,10 +471,11 @@ define('backfin-core', function() {
     });
   }
 
+
   return core;
 });
 define('backfin-hotswap', ['backfin-core'], function(backfin){
-  
+
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
@@ -457,6 +484,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     if(window.location.href.indexOf('local') != -1) {
       this._connect();
     }
+    this.busyFiles = {};
   }
 
   Hotswap.prototype._connect = function() {
@@ -476,34 +504,48 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     return key.replace('/plugins/', '').replace(/\/[^/]*$/, '').replace('/', '');
   }
 
+  Hotswap.prototype._processFileChanges = function(filePath) {
+    if(this.busyFiles[filePath]) {
+      return setTimeout(function() { this._processFileChanges(filePath) }.bind(this), 100);
+    }
+    this.busyFiles[filePath] = true;
+    var possiblePluginId = this._getRootPath(filePath);
+    var plugin = null;
+    backfin.getActivePlugins().forEach(function(activePlugin) {
+      if(possiblePluginId.indexOf(activePlugin.id) == 0) {
+        plugin = activePlugin;
+      }   
+    });
+
+    if(filePath.match(/\.less/)) {
+      this.busyFiles[filePath] = false;
+      return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
+    }
+
+    if(plugin) {
+      console.log("Reloading existing plugin: ", plugin.id);
+      this._reloadPlugin(plugin.id);
+    } else {
+      console.log("Starting fresh newly detected plugin: ", possiblePluginId);
+      this._reloadPlugin(possiblePluginId);
+    }
+    this.busyFiles[filePath] = false;
+  }
+
   Hotswap.prototype._handleResponse = function(res) {
-    var self = this;
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {
       Object.keys(res.less).forEach(function(key){
         less.refresh();
       });
     }
-
     if(res.plugins) {
-      var plugins = {};
-      backfin.getActivityPlugins().forEach(function(plugin) {
-        plugins[plugin.id] = plugin;
-      });
-
       try {
         Object.keys(res.plugins).forEach(function(key) {
-          var id = self._getRootPath(key);
-          if(key.match(/\.less/)) {
-            return self._reloadPluginStyles(id, '/plugins'+key);
-          }
-          var plugin = plugins[id];
-          if(plugin) {
-            self._reloadPlugin(id);
-          } else {
-            backfin.start(id, { hotswap : true });
-          }
-        });
+          if(key.match(/\.swp$/)) return;
+          if(key.match(/\~$/)) return;
+          this._processFileChanges(key);
+        }.bind(this));
       } catch(e) {
         console.warn(e.stack);
       }
@@ -529,14 +571,15 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     less.refresh();
   }
 
-  Hotswap.prototype._reloadPlugin = function(pluginId, isNew) {
+  Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
     backfin.stop(pluginId);
     backfin.unload(pluginId);
     backfin.start(pluginId,  { hotswap : true });
   }
 
-  return new Hotswap();
+  return Hotswap;
+
 });
 
 
