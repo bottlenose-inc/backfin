@@ -470,7 +470,7 @@ define('backfin-core', function() {
     return _manifests.filter(function(manifest){
       //every return true if they all passes
       return keys.every(function(key) {
-        return manifest[key] == args[key];
+        return manifest[key] == options[key];
       })
     });
   }
@@ -482,7 +482,7 @@ define('backfin-core', function() {
 
   core.registerEventHook = function(eventId, addCallback, removeCallback) {
     eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
-        
+   
     var _events = [];
     this.getManifests().forEach(function(manifest){
       if(!manifest.builtIn) return;

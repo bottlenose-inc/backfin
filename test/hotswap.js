@@ -1,13 +1,10 @@
-(function() {
+define(function() {
   module("backfin-hotswap");
   
-  var backfin,
-      events,
+  var events,
       TEST_CHANNEL = 'test';
   
-
   test("_reloadView", function() {
-    ok(!hotswap._reloadView(), 'should return false if no view path specified');
+    ok(true)
   });
-
-})()
+})

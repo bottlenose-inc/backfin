@@ -1,24 +1,19 @@
-(function() {
+define(function() {
   module("backfin-core");
   
-  var backfin,
-      events,
+  var events,
       TEST_CHANNEL = 'test';
-      
-  QUnit.testStart(function(){
-    backfin = window.core;
-    requirejs.undef()
+  
+
+  QUnit.testStart(function(e){
+    if(e.module != "backfin-core") return;
     backfin.config({
       manifests : [
-        { id : 'foobar' },
+        { id : 'foobar', featured : true},
         { id : TEST_CHANNEL }
       ]
     });
-
     events = backfin.getEvents();
-    //verify setup
-    ok(backfin);
-    ok(events);
   });
 
   test('on', function(){ 
@@ -137,6 +132,7 @@
     var args = { foo : 'bar' };
     backfin.on('main', 'loaded', callback, {});
     backfin.start(TEST_CHANNEL, 'foo', 'bar');
+
     ok(callback.calledWith('foo', 'bar'), 'should pass on the arguments specified to the widget');
 
     var promise = backfin.start([{id : 'foo'}]);
@@ -145,91 +141,79 @@
       equal(promise.state(), 'rejected', 'Should reject promise for plugins that are not defined');
       start();
     }); 
+  });
+
+  test("stop", function(){
+    
   })
 
-  return;
-
-  describe('backfin', function () {
-
- 
-    describe('subscribe', function() {
-
-    });
-
-    describe('publish', function() {
-
-          describe('verification of parameters', function() {
-              it('should throw an error if all the params are not specified', function () {
-                  expect(function () {
-                      backfin.publish();
-                  }).toThrow(new Error('Channel must be defined'));
-              });
-
-              it('should throw an error if typeof channel param is not string', function () {
-                  expect(function () {
-                      backfin.publish({});
-                  }).toThrow(new Error('Channel must be a string'));
-              });
-          });
-
-      it('should call every callback for a channel, within the correct context', function () {
-              var callback = sinon.spy();
-              events[TEST_CHANNEL] = [
-                  {callback:callback}
-              ];
-
-              backfin.publish(TEST_CHANNEL);
-
-              expect(callback).toHaveBeenCalled();
-          });
-
-      it('should pass additional arguments to every call callback for a channel', function () {
-              var callback = sinon.spy();
-              var argument = {};
-              events[TEST_CHANNEL] = [
-                  {callback:callback}
-              ];
-
-              backfin.publish(TEST_CHANNEL, argument);
-
-              expect(callback).toHaveBeenCalledWith(fment);
-          });
-
-      it('should return false if channel has not been defined', function () {
-              var called = backfin.publish(TEST_CHANNEL);
-              expect(called).toBe(false);
-          });
-
-          it('should add to publish queue if widget is loading', function() {
-              events[TEST_CHANNEL] = [
-                  {callback:function() {}}
-              ];
-              backfin.start({ channel:TEST_CHANNEL, element:'#nothing' });
-
-              backfin.publish(TEST_CHANNEL);
-
-              expect(backfin.getPublishQueueLength()).toBe(1);
-          })
-    });
-
-    xdescribe('start', function() {
+  test("unload", function(){
     
-    });
+  })
 
-    xdescribe('stop', function() {
-      it('should throw an error if all the params are not specified', function () {});
-      it('should throw an error if all the params are not the correct type', function () {});
-      it('should call unload with the correct widget to unload from the app', function () {});
-      it('should empty the contents of a specific widget\'s container div', function () {});
-    });
+  test("config", function(){
 
-    // This one will need to be researched a little more to determine exactly what require does
-    xdescribe('unload', function () {
-      it('should throw an error if all the params are not specified', function () {});
-      it('should throw an error if all the params are not the correct type', function () {});
-      it('should unload a module and all modules under its widget path', function () {});
-    });
+  });
+  
+  test("getManifests", function(){
+    equal(backfin.getManifests().length, 2, "Should find the to manifest we load by default");
+    ok(backfin.getManifests()[0].id, "The full object should be available");
+    equal(backfin.getManifests({ featured : true }).length, 1, "Should allow for filtering on attributes");
+  });
+
+  test("getActivePlugins", function(){
 
   });
 
-})()
+  test("getPublishQueueLength", function(){
+
+  })
+
+  test("getEvents", function(){
+
+  })
+
+  test("onError", function(){
+
+  })
+
+  test("getManifestById", function(){
+    ok(backfin.getManifestById('foobar'));
+    ok(!backfin.getManifestById('bar'));
+  })
+
+  test("registerEventHook", function(){
+    console.log(1231231);
+  //core.registerEventHook = function(eventId, addCallback, removeCallback) {
+    backfin.registerEventHook('pizza', function(){  
+      console.log(arguments); }, 
+      function(){ 
+        console.log(arguments); 
+      })
+
+    /*
+    eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
+        
+    var _events = [];
+    this.getManifests().forEach(function(manifest){
+      if(!manifest.builtIn) return;
+      _events = _events.concat(_normalizeEvents(manifest)); 
+    });
+    
+    _events.forEach(function(e){
+      if(e.eventType == eventId) addCallback(e);
+    });
+
+    eventHooks[eventId].push({
+      eventsIds : _events.map(function(e){ return e.id }),
+      addCallback : addCallback, 
+      removeCallback : removeCallback 
+    });
+    }*/
+
+    //should filter out manifest that is not builtIn
+    //should trigger an event right after register the hook
+    //should trigger a addCallback on manifest that contains that eventId
+    //should add it the addCallback and removeCallback to the eventHooks list with the found manifest
+  })
+})
