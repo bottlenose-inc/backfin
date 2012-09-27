@@ -43,7 +43,32 @@ define('backfin-core', function() {
       return bound;
     };
   }
+  
+  var lastGlobalError;
 
+  function globalErrorlogger(message, url, line){
+    var clientErr;
+    if(message instanceof Error) {
+      clientErr = message;
+    } if(typeof(message) == 'string' && typeof(url) == 'string' && typeof(line) == 'number') {
+      clientErr = new Error(message);
+      clientErr.stack = 'File : ' + url + '\nline : ' + line;
+    }
+    lastGlobalError = clientErr;
+  }
+
+  function enableGlobalErrorLogger() {
+    if(!window.onerror) {
+      window.onerror = globalErrorlogger;
+    }
+  }
+
+  function disableGlobalErrorLogger() {
+    if(window.onerror ==  globalErrorlogger) {
+      window.onerror = null;
+    }
+    globalErrorlogger = null;
+  }
 
   // Uncomment if using zepto
   // Deferred.installInto($);
@@ -188,12 +213,8 @@ define('backfin-core', function() {
     var args = [].slice.call(arguments, 2), i, l;
     if(!events[event]) return;
     for (i = 0, l = events[event].length; i < l; i += 1) {
-      try {
-        if(events[event][i].subscriber == plugin) {
-          events[event][i]['callback'].apply(this, args);
-        }
-      } catch (e) {
-        console.error(e.stack);
+      if(events[event][i].subscriber == plugin) {
+        events[event][i]['callback'].apply(this, args);
       }
     }
     return true;
@@ -261,10 +282,9 @@ define('backfin-core', function() {
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
-      console.log(paths);
 
       require(paths, function(Sandbox, main, manifestText) {
-        console.log(channel);
+
         manifest =  manifest || JSON.parse(manifestText || '{}');
         manifest.id = channel;
         
@@ -280,7 +300,8 @@ define('backfin-core', function() {
           //if hotswap we take the args from the manifest if any
           main.apply(null, [sandbox].concat(args));
           if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
-        } catch (e) {
+        } catch (e) { 
+
           core.onError(e, channel);
         }
         try {
@@ -297,7 +318,6 @@ define('backfin-core', function() {
 
         dfd.resolve();
       }, function(err) {
-        console.log(err.stack);
         if (err.requireType === 'timeout') {
           console.warn('Could not load module ' + err.requireModules);
         } else {
@@ -306,7 +326,7 @@ define('backfin-core', function() {
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
           if(coreOptions.onError) {
-            coreOptions.onError(failedId, err);
+            coreOptions.onError(failedId, lastGlobalError || err);
           } else {
             console.warn('failed to load ' + failedId); 
           }
@@ -323,7 +343,12 @@ define('backfin-core', function() {
       var id = decamelize(plugin.id);
       promises.push(load(id, plugin.options));
     }
-    $.when.apply($, promises).done(core.emptyPublishQueue);
+
+    enableGlobalErrorLogger();
+    $.when.apply($, promises).done(core.emptyPublishQueue).always(function(){
+      disableGlobalErrorLogger();
+    });
+
     return promises.length == 1 ? promises[0] : promises;
   };
 
@@ -412,6 +437,9 @@ define('backfin-core', function() {
   };
 
   core.onError = function(err, channel) {
+    if(coreOptions && coreOptions.onError) {
+      return coreOptions.onError(channel, err);
+    }
     console.error('plugin :' + channel + '\n' + err.stack);
   }
 
@@ -457,6 +485,7 @@ define('backfin-core', function() {
         
     var _events = [];
     this.getManifests().forEach(function(manifest){
+      if(!manifest.builtIn) return;
       _events = _events.concat(_normalizeEvents(manifest)); 
     });
     

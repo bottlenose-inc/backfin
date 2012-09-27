@@ -485,6 +485,7 @@ define('backfin-core', function() {
         
     var _events = [];
     this.getManifests().forEach(function(manifest){
+      if(!manifest.builtIn) return;
       _events = _events.concat(_normalizeEvents(manifest)); 
     });
     
