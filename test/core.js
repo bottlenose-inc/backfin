@@ -7,6 +7,7 @@ define(function() {
 
   QUnit.testStart(function(e){
     if(e.module != "backfin-core") return;
+    console.log(1);
     backfin.config({
       manifests : [
         { id : 'foobar', featured : true},
@@ -143,19 +144,31 @@ define(function() {
     }); 
   });
 
-  test("stop", function(){
+  test("stop", function() {
     
-  })
+  });
 
   test("unload", function(){
-    
-  })
+    define('plugins/monster/main', function(){
+      return function(){};
+    });
+
+    backfin.config({
+      manifests : [ {  id : 'monster', featured : true }]
+    });
+
+    backfin.start('monster');
+    ok(require.s.contexts._.defined['plugins/monster/main'], 'make sure that the plugin is defined before unloading it');
+    backfin.unload('monster');
+    ok(!require.s.contexts._.defined['plugins/monster/main'], 'should remove the plugin ');
+  });
 
   test("config", function(){
 
   });
   
   test("getManifests", function(){
+    console.log(backfin.getManifests());
     equal(backfin.getManifests().length, 2, "Should find the to manifest we load by default");
     ok(backfin.getManifests()[0].id, "The full object should be available");
     equal(backfin.getManifests({ featured : true }).length, 1, "Should allow for filtering on attributes");
@@ -184,7 +197,6 @@ define(function() {
 
   test("registerEventHook", function(){
     define('plugins/foobar/main', function() { return function(){} });
-    define('plugins/foobar/main', function() { return function(){} });
 
     backfin.config({
       manifests : [ { 
@@ -210,8 +222,8 @@ define(function() {
     equal(addCallback.args[0][0].id, 'barfoo', 'should return the id of the new manifest event id');
     
 
-    backfin.('foobar');
-    ok(removeCallstopback.called, 'should trigger new callback when a new plugin is removed with that eventid');
-    equal(removeCallstopback.args[0][0].id, 'foobar', 'should remove the right event');
+    backfin.stop('foobar');
+    ok(removeCallback.called, 'should trigger new callback when a new plugin is removed with that eventid');
+    equal(removeCallback.args[0][0].id, 'foobar', 'should remove the right event');
   })
 })

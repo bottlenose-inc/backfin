@@ -105,14 +105,14 @@ define('backfin-core', function() {
   }
 
   function _normalizeEvents(manifest) {
-    var events = [];
+    var _events = [];
     Object.keys(manifest.events || {}).forEach(function(key) {
-      events = events.concat(manifest.events[key].map(function(e){
+      _events = _events.concat(manifest.events[key].map(function(e){
         e.eventType = key;
         return e;
       }));
     });
-    return events;
+    return _events;
   }
 
   // Get the widgets path
@@ -123,6 +123,7 @@ define('backfin-core', function() {
   core.config = function(options) {
     var ids = [], styles = [];
     coreOptions = options;
+    manifests = {};
     (coreOptions.manifests || []).forEach(function(manifest){
       manifests[manifest.id] = manifest;
       if(manifest.builtIn) {
@@ -418,12 +419,12 @@ define('backfin-core', function() {
   core.unload = function(channel) {
     var key;
     var contextMap = require.s.contexts._.defined;
-
     for (key in contextMap) {
       if (contextMap.hasOwnProperty(key) && key.indexOf(channel) !== -1) {
         require.undef(key);
       }
     }
+
     var requireConfig = require.s.contexts._.config;
     var widgetsPath = this.getWidgetsPath();
     if(requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
