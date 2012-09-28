@@ -7,7 +7,6 @@ define(function() {
 
   QUnit.testStart(function(e){
     if(e.module != "backfin-core") return;
-    console.log(1);
     backfin.config({
       manifests : [
         { id : 'foobar', featured : true},
@@ -15,6 +14,9 @@ define(function() {
       ]
     });
     events = backfin.getEvents();
+    backfin.getActivePlugins().forEach(function(plugin){
+      backfin.stop(plugin.id);
+    });
   });
 
   test('on', function(){ 
@@ -98,7 +100,6 @@ define(function() {
 
 
   test('start', function(){
-
     throws(
       function() { backfin.start()},
       "should throw an error if all the params are not specified"
@@ -168,22 +169,23 @@ define(function() {
   });
   
   test("getManifests", function(){
-    console.log(backfin.getManifests());
     equal(backfin.getManifests().length, 2, "Should find the to manifest we load by default");
     ok(backfin.getManifests()[0].id, "The full object should be available");
     equal(backfin.getManifests({ featured : true }).length, 1, "Should allow for filtering on attributes");
   });
 
   test("getActivePlugins", function(){
-
+    define('plugins/foobar/main', function() { return function(){} });
+    ok(!backfin.getActivePlugins().length, 'should have no active plugins');
+    var promise = backfin.start('foobar');
+    ok(backfin.getActivePlugins().length, 'should have a plugin');
+    var plugin = backfin.getActivePlugins()[0];
+    ok(plugin.id, 'active plugin should have an id');
+    ok(plugin.manifest, 'active plugin should have an manifest');
   });
 
-  test("getPublishQueueLength", function(){
-
-  })
-
   test("getEvents", function(){
-
+    console.log(backfin.getEvents());
   })
 
   test("onError", function(){
