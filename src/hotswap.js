@@ -5,9 +5,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
     options.rootPath =  options.rootPath || 'js/';
     options.server =  options.server || 'localhost';
     this.options = options;
-    if(window.location.href.indexOf('local') != -1) {
-      this._connect();
-    }
+    if(window.location.href.indexOf('local') != -1) this._connect();
     this.busyFiles = {};
   }
 
@@ -25,7 +23,7 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   }
 
   Hotswap.prototype._getRootPath = function(key) {
-    return key.replace('/plugins/', '').replace(/\/[^/]*$/, '').replace('/', '');
+    return key.replace('/' + backfin.getPluginPath() + '/', '').replace(/\/[^/]*$/, '').replace('/', '');
   }
 
   Hotswap.prototype._processFileChanges = function(filePath) {

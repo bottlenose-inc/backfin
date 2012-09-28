@@ -53,10 +53,10 @@
       console.warn('require.js: ' + err.message);
     }
     
-    require(['backfin-core', 'backfin-sandbox', 'backfin-hotswap', 'plugins/test/main'], function (core, sandbox, hotswap) {
+    require(['backfin-core', 'backfin-sandbox', 'backfin-hotswap', 'plugins/test/main'], function (core, sandbox, Hotswap) {
       window.backfin = core;
       window.sandbox = sandbox;
-      window.hotswap = hotswap;
+      window.hotswap = new Hotswap();
 
       require(['core', 'hotswap'], function(){
         

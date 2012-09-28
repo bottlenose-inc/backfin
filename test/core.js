@@ -198,7 +198,7 @@ define(function() {
   });
 
   test("getEvents", function(){
-    console.log(backfin.getEvents());
+    
   })
 
   test("onError", function(){
