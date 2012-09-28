@@ -180,10 +180,6 @@ define(function() {
     backfin.unload('monster');
     ok(!require.s.contexts._.defined['plugins/monster/main'], 'should remove the plugin ');
   });
-
-  test("config", function(){
-
-  });
   
   test("getManifests", function(){
     equal(backfin.getManifests().length, 2, "Should find the to manifest we load by default");
