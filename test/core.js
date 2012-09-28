@@ -146,7 +146,24 @@ define(function() {
   });
 
   test("stop", function() {
-    
+    var view, el = document.createElement('div');
+    document.body.appendChild(el);
+    define('plugins/foobar/main', function(){
+      return function(sandbox, options){
+        var View = sandbox.View.extend({
+          template : '<div>hello-world</div>',
+          initialize : function(options) { 
+            this.el.innerHTML = this.template;
+          }
+        });
+        view = new View({ el : el });
+      };
+    });
+    backfin.start('foobar');
+    ok(backfin.getActivePlugins().length, 'making sure we got a plugin in to stop');
+    backfin.stop('foobar');
+    ok(!el.parentNode, 'should be null because the view should be destroyed');
+    ok(!backfin.getActivePlugins().length, 'should return an empty list now that the plugin has been destroyed');
   });
 
   test("unload", function(){
