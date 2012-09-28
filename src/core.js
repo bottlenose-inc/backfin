@@ -20,7 +20,7 @@ define('backfin-core', function() {
   var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
-  var WIDGETS_PATH = '../../../plugins'; // Path to widgets
+  var PLUGIN_PATH = '/plugins'; // Path to widgets
 
  
   // The bind method is used for callbacks.
@@ -116,8 +116,14 @@ define('backfin-core', function() {
   }
 
   // Get the widgets path
-  core.getWidgetsPath = function() {
-    return WIDGETS_PATH;
+  core.getPluginPath = function() {
+    var requireConfig = require.s.contexts._.config;
+    var pluginPath = PLUGIN_PATH;
+
+    if (requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
+      pluginPath = requireConfig.paths.widgets;
+    }
+    return pluginPath;
   };
 
   core.config = function(options) {
@@ -271,14 +277,8 @@ define('backfin-core', function() {
 
     function load(channel, args) {
       var dfd = new $.Deferred();
-      var widgetsPath = core.getWidgetsPath();
-      var requireConfig = require.s.contexts._.config;
+      var widgetsPath = core.getPluginPath();
       var manifest = manifests[channel];
-
-      if (requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
-        widgetsPath = requireConfig.paths.widgets;
-      }
-
       coreOptions.clearError && coreOptions.clearError();
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
@@ -424,12 +424,7 @@ define('backfin-core', function() {
         require.undef(key);
       }
     }
-
-    var requireConfig = require.s.contexts._.config;
-    var widgetsPath = this.getWidgetsPath();
-    if(requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
-      widgetsPath = requireConfig.paths.widgets;
-    }
+    var widgetsPath = this.getPluginPath();
     require.undef(widgetsPath + '/' + channel + '/main');
   };
 
