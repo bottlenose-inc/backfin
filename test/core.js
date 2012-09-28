@@ -183,37 +183,35 @@ define(function() {
   })
 
   test("registerEventHook", function(){
-    console.log(1231231);
-  //core.registerEventHook = function(eventId, addCallback, removeCallback) {
-    backfin.registerEventHook('pizza', function(){  
-      console.log(arguments); }, 
-      function(){ 
-        console.log(arguments); 
-      })
+    define('plugins/foobar/main', function() { return function(){} });
+    define('plugins/foobar/main', function() { return function(){} });
 
-    /*
-    eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
-        
-    var _events = [];
-    this.getManifests().forEach(function(manifest){
-      if(!manifest.builtIn) return;
-      _events = _events.concat(_normalizeEvents(manifest)); 
+    backfin.config({
+      manifests : [ { 
+          id : 'foobar', featured : true, builtIn:true,
+          events: { foobar : [{ id: "foobar" }]} 
+      },{ 
+          id : TEST_CHANNEL,
+          events: { foobar : [{ id: "barfoo" }]} 
+      }]
     });
+
+    var addCallback = this.spy(), removeCallback = this.spy();
+
+    backfin.registerEventHook('foobar', addCallback,removeCallback);
+    ok(addCallback.calledOnce, 'should trigger an event right after register the hook if theres is events');
+    equal(addCallback.args[0].length, 1, 'should filter out manifest that is not builtIn');
+    equal(addCallback.args[0][0].eventType, 'foobar', 'should trigger a addCallback on manifest that contains that eventId');
     
-    _events.forEach(function(e){
-      if(e.eventType == eventId) addCallback(e);
-    });
+    addCallback.reset();
+    backfin.start(TEST_CHANNEL);
+    ok(addCallback.called, 'should trigger new callback when a new plugin is started with that eventid');
+    equal(addCallback.args[0].length, 1, 'should only return one manifest as the other has already been added');
+    equal(addCallback.args[0][0].id, 'barfoo', 'should return the id of the new manifest event id');
+    
 
-    eventHooks[eventId].push({
-      eventsIds : _events.map(function(e){ return e.id }),
-      addCallback : addCallback, 
-      removeCallback : removeCallback 
-    });
-    }*/
-
-    //should filter out manifest that is not builtIn
-    //should trigger an event right after register the hook
-    //should trigger a addCallback on manifest that contains that eventId
-    //should add it the addCallback and removeCallback to the eventHooks list with the found manifest
+    backfin.('foobar');
+    ok(removeCallstopback.called, 'should trigger new callback when a new plugin is removed with that eventid');
+    equal(removeCallstopback.args[0][0].id, 'foobar', 'should remove the right event');
   })
 })
