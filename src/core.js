@@ -115,6 +115,10 @@ define('backfin-core', function() {
     return _events;
   }
 
+  core.registerModule = function(module) {
+
+  }
+
   // Get the widgets path
   core.getPluginPath = function() {
     var requireConfig = require.s.contexts._.config;
@@ -352,6 +356,10 @@ define('backfin-core', function() {
 
     return promises.length == 1 ? promises[0] : promises;
   };
+
+  core.getCoreOptions = function(){
+    return coreOptions;
+  }
 
   // Unload a widget (collection of modules) by passing in a named reference
   // to the channel/widget. This will both locate and reset the internal
