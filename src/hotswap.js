@@ -1,4 +1,4 @@
-define('backfin-hotswap', ['backfin-core'], function(backfin){
+define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, unit){
 
   function Hotswap(options) {
     options || (options = {});
@@ -27,11 +27,23 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   }
 
   Hotswap.prototype._processFileChanges = function(filePath) {
+    console.log(filePath);
     if(this.busyFiles[filePath]) {
       return setTimeout(function() { this._processFileChanges(filePath) }.bind(this), 100);
     }
     this.busyFiles[filePath] = true;
+
     var possiblePluginId = this._getRootPath(filePath);
+    
+    var manifest = backfin.getManifestById(possiblePluginId);
+    if(manifest && manifest.tests) {
+      var testPath = filePath.replace('/' +possiblePluginId + '/');
+      if(manifest.tests.indexOf(testPath) != -1) {
+        unit.runTest(possiblePluginId, testPath);
+      }
+    }
+
+
     var plugin = null;
     backfin.getActivePlugins().forEach(function(activePlugin) {
       if(possiblePluginId.indexOf(activePlugin.id) == 0) {
@@ -43,6 +55,10 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
       this.busyFiles[filePath] = false;
       return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
     }
+
+
+
+    console.log(possiblePluginId);
 
     if(plugin) {
       console.log("Reloading existing plugin: ", plugin.id);
