@@ -7,11 +7,12 @@
 // to just use the mediator directly.
 define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(mediator, Sandbox) {
 
-  function Qunit() {
-    mediator.on('qunit', 'qunit:runTests', this.runTests.bind(this), this);
+  function Unit() {
+  
   }
 
-  Qunit.prototype.runTests = function(options) {
+
+  Unit.prototype.runTests = function(options) {
     var manifests = mediator.getManifests(), testPaths = [], paths;
     for(var i = 0; i < manifests.length;i++) {
       paths = (manifests[i].tests || []);
@@ -21,14 +22,12 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(mediator, S
       testPaths = testPaths.concat(paths);
     }
     for(var i = 0; i < testPaths.length;i++) {
-      this.runTest(testPaths[i])
+      this.runTest(possiblePluginId, testPath);
     }
   };
 
-  Qunit.prototype.runTest = function(path){
+  Unit.prototype.runTest = function(pluginIn, testPath){
     var iframe = document.createElement('iframe');
-    document.body.appendChild(iframe);
-
     $(iframe).on("load", function(){
       var win = iframe.contentWindow;
       var options = _.extend(mediator.getCoreOptions(), {
@@ -43,17 +42,11 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(mediator, S
       win.importScripts(scripts, function(){
         console.log('done');
       });
-      win.QUnit.log(function(data) { 
-        console.log(data);
-      });
-      win.QUnit.done(function() {
-        // start the wrapper test from the main page
-        console.log('complete');
-      });
     });
+    var path = '/' + backfin.getPluginPath() + '/' + pluginIn + '/' + testPath;
     iframe.src = path + '?bust=' + new Date();
     return iframe;
   };
   
-  return new Qunit();
+  return new Unit();
 });

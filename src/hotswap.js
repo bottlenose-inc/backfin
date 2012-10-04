@@ -56,10 +56,6 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
       return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
     }
 
-
-
-    console.log(possiblePluginId);
-
     if(plugin) {
       console.log("Reloading existing plugin: ", plugin.id);
       this._reloadPlugin(plugin.id);

@@ -164,14 +164,16 @@ define('backfin-core', function() {
 
   // Subscribe to an event
   //
-  // * **param:** {string} subscriber Channel name
+
   // * **param:** {string} event Event name
   // * **param:** {function} callback Module callback
+  // * **param:** {string} subscriber subscriber name
   // * **param:** {object} context Context in which to execute the module
-  core.on = function(subscriber, event, callback, context) {
-    if (event === undefined || callback === undefined || context === undefined) {
-      throw new Error('Channel, callback, and context must be defined');
+  core.on = function(event, callback, subscriber, context) {
+    if (event === undefined || callback === undefined) {
+      throw new Error('Channel, callback, and must be defined');
     }
+    subscriber = subscriber || 'backfin';
     if (typeof subscriber !== 'string') {
       throw new Error('Subscriber must be a string');
     }
@@ -201,7 +203,7 @@ define('backfin-core', function() {
     if (channel === undefined) throw new Error('Channel must be defined');
     if (typeof channel !== 'string') throw new Error('Channel must be a string');
 
-    if (isWidgetLoading) { // Catch publish event!
+    if (['plugin:error'].indexOf(channel) == -1 && isWidgetLoading) { // Catch publish event!
       publishQueue.push(arguments);
       return false;
     }
@@ -306,8 +308,7 @@ define('backfin-core', function() {
           main.apply(null, [sandbox].concat(args));
           if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
         } catch (e) { 
-
-          core.onError(e, channel);
+          core.trigger('plugin:error', channel, e);
         }
         try {
           if(manifest.events) {
@@ -330,11 +331,9 @@ define('backfin-core', function() {
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          if(coreOptions.onError) {
-            coreOptions.onError(failedId, lastGlobalError || err);
-          } else {
-            console.warn('failed to load ' + failedId); 
-          }
+          console.log(core);
+          core.trigger('plugin:error', failedId, lastGlobalError || err);
+          console.warn('failed to load ' + failedId); 
         }
         dfd.reject();
       });
@@ -439,13 +438,6 @@ define('backfin-core', function() {
   core.getEvents = function() {
     return events;
   };
-
-  core.onError = function(err, channel) {
-    if(coreOptions && coreOptions.onError) {
-      return coreOptions.onError(channel, err);
-    }
-    console.error('plugin :' + channel + '\n' + err.stack);
-  }
 
   core.getActivePlugins = function(args){
     var results = [], key, plugin;
