@@ -5,7 +5,7 @@
 // Note: Handling permissions/security is optional here
 // The permissions check can be removed
 // to just use the mediator directly.
-define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(mediator, Sandbox) {
+define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandbox) {
 
   function Unit() {
   
@@ -13,7 +13,7 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(mediator, S
 
 
   Unit.prototype.runTests = function(options) {
-    var manifests = mediator.getManifests(), testPaths = [], paths;
+    var manifests = core.getManifests(), testPaths = [], paths;
     for(var i = 0; i < manifests.length;i++) {
       paths = (manifests[i].tests || []);
       paths = paths.map(function(path){
@@ -26,11 +26,11 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(mediator, S
     }
   };
 
-  Unit.prototype.runTest = function(pluginIn, testPath){
+  Unit.prototype.runTest = function(pluginId, testPath){
     var iframe = document.createElement('iframe');
     $(iframe).on("load", function(){
       var win = iframe.contentWindow;
-      var options = _.extend(mediator.getCoreOptions(), {
+      var options = _.extend(core.getCoreOptions(), {
         channel : 'authoring', 
         manifest : {}
       });
@@ -43,9 +43,9 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(mediator, S
         console.log('done');
       });
     });
-    var path = '/' + backfin.getPluginPath() + '/' + pluginIn + '/' + testPath;
+    var path = '/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath;
     iframe.src = path + '?bust=' + new Date();
-    return iframe;
+    core.trigger('plugin:test', pluginId, iframe);
   };
   
   return new Unit();

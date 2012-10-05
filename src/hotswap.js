@@ -27,22 +27,22 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
   }
 
   Hotswap.prototype._processFileChanges = function(filePath) {
-    console.log(filePath);
+    
     if(this.busyFiles[filePath]) {
       return setTimeout(function() { this._processFileChanges(filePath) }.bind(this), 100);
     }
-    this.busyFiles[filePath] = true;
 
     var possiblePluginId = this._getRootPath(filePath);
     
     var manifest = backfin.getManifestById(possiblePluginId);
     if(manifest && manifest.tests) {
-      var testPath = filePath.replace('/' +possiblePluginId + '/');
+      var testPath = filePath.replace('/' +possiblePluginId + '/', '');
       if(manifest.tests.indexOf(testPath) != -1) {
         unit.runTest(possiblePluginId, testPath);
+        return;
       }
     }
-
+    this.busyFiles[filePath] = true;
 
     var plugin = null;
     backfin.getActivePlugins().forEach(function(activePlugin) {
