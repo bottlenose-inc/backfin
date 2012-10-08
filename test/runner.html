@@ -1,0 +1,23 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="vendor/qunit-1.9.0.css">
+    <script src="vendor/require/require-2.0.6.js"></script>
+    <script src="vendor/qunit-1.9.0.js"></script>
+    <script src="vendor/jquery-1.8.0.js"></script>
+
+    <script>
+      $.holdReady(true)
+      function run(id) {
+        require([id], function(){
+          $.holdReady(false);
+        });
+      }
+    </script>    
+  </head>
+
+  <body>
+  </head>
+  <body>
+    <div id="qunit"></div>
+  </body>
+</html>

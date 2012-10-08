@@ -53,14 +53,17 @@
     requirejs.onError = function(err) {
       console.warn('require.js: ' + err.message);
     }
-    
-    require(['backfin-core', 'backfin-sandbox', 'backfin-hotswap', 'plugins/test/main'], function (core, sandbox, Hotswap) {
+
+    $.holdReady(true) //make sure that qunit doesnt start before the scripts has been loaded
+
+    require(['backfin-core', 'backfin-sandbox', 'backfin-hotswap', 'backfin-unit', 'plugins/test/main'], function (core, sandbox, Hotswap, unit) {
       window.backfin = core;
       window.sandbox = sandbox;
+      window.unit = unit;
       window.hotswap = new Hotswap();
 
-      require(['core', 'hotswap'], function(){
-        
+      require(['core', 'hotswap', 'unit'], function(){
+        $.holdReady(false)  //make sure that qunit doesnt start before the scripts has been loaded
       });
     })
   </script>

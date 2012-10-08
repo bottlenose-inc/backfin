@@ -11,7 +11,7 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandb
   }
 
   Unit.prototype._getTestRunnerPath = function(options) {
-    return (core.getCoreOptions() || {}).testPath;
+    return (core.getCoreOptions() || {}).testRunnerPath;
   };
 
   Unit.prototype.runTest = function(pluginId, testPath){
@@ -23,16 +23,11 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandb
         manifest : {}
       });
       win.sandbox = new Sandbox(options);
-      var scripts = window.__scriptGroups.base.concat(window.__scriptGroups.app);
-      scripts = scripts.filter(function(file){
-        return file.indexOf('multi-tab-monitor') == -1;
-      })
-      win.importScripts(scripts, function(){
-        console.log('done');
-      });
+      win.run(core.getPluginPath() + '/' + pluginId + '/' + testPath);
     });
+
     var path = '/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath;
-    iframe.src = this._getTestRunnerPath() + '?bust=' + new Date();
+    iframe.src = this._getTestRunnerPath() + '?bust=' + Date.now();
     core.trigger('plugin:test', pluginId, iframe);
   };
   
