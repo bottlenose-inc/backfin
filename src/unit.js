@@ -6,24 +6,12 @@
 // The permissions check can be removed
 // to just use the mediator directly.
 define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandbox) {
-
   function Unit() {
-  
+    
   }
 
-
-  Unit.prototype.runTests = function(options) {
-    var manifests = core.getManifests(), testPaths = [], paths;
-    for(var i = 0; i < manifests.length;i++) {
-      paths = (manifests[i].tests || []);
-      paths = paths.map(function(path){
-        return  '/' + backfin.getPluginPath() + '/' + manifests[i].id + '/' + path;
-      });
-      testPaths = testPaths.concat(paths);
-    }
-    for(var i = 0; i < testPaths.length;i++) {
-      this.runTest(possiblePluginId, testPath);
-    }
+  Unit.prototype._getTestRunnerPath = function(options) {
+    return (core.getCoreOptions() || {}).testPath;
   };
 
   Unit.prototype.runTest = function(pluginId, testPath){
@@ -44,7 +32,7 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandb
       });
     });
     var path = '/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath;
-    iframe.src = path + '?bust=' + new Date();
+    iframe.src = this._getTestRunnerPath() + '?bust=' + new Date();
     core.trigger('plugin:test', pluginId, iframe);
   };
   

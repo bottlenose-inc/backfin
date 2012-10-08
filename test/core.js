@@ -26,39 +26,42 @@ define(function() {
       },
       "should throw an error if all the params are not specified"
     );
+
     throws(
       function() {
-        backfin.on({}, 'subscriber', function () {}, {})
-      },
-      "should throw an error if typeof subscriber is NOT string"
-    );
-    throws(
-      function() {
-       backfin.on('channel', {}, function(){}, {})
+        backfin.on({}, function () {}, {})
       },
       "should throw an error if typeof event is NOT string"
     );
+
     throws(
       function() {
-        backfin.on('subscriber', 'channel', 'callback', {})
+       backfin.on('event', {})
+      },
+      "should throw an error if typeof callback is not function"
+    );
+
+    throws( 
+      function() {
+        backfin.on('event', function(){}, {})
       },
       "should throw an error if typeof callback is NOT a function"
     );
 
-    backfin.on(TEST_CHANNEL, 'spec', function() {}, this);
+    backfin.on('spec', function() {}, TEST_CHANNEL, this);
     ok(events['spec'], "should allow an event to be subscribed");
 
     var callback,
         callbackResult = 'callback';
 
-    backfin.on(TEST_CHANNEL, 'foobar', function(){ return callbackResult; }, this);
+    backfin.on('foobar', function(){ return callbackResult; }, TEST_CHANNEL, this);
     callback = events['foobar'][0].callback; 
     equal(callback(), callbackResult, 'should be able assign a specific callback for subscribed event');
 
     var callback1 = function() {};
     var callback2 = function() {};
-    backfin.on(TEST_CHANNEL, 'twocallbacks', callback1, this);
-    backfin.on(TEST_CHANNEL, 'twocallbacks', callback2, this);
+    backfin.on('twocallbacks', callback1, TEST_CHANNEL, this);
+    backfin.on('twocallbacks', callback2, TEST_CHANNEL, this);
     equal(events['twocallbacks'].length, 2 , 'should allow subscribing multiple callbacks for single event channel');
   });
 
@@ -120,7 +123,7 @@ define(function() {
     define('plugins/' + TEST_CHANNEL + '/main', function() {
       return callback;
     });
-    backfin.on('main', 'loaded', callback, {});
+    backfin.on('loaded', callback, 'main', {});
     backfin.start(TEST_CHANNEL);
     ok(callback.called, 'should load (require) a widget that corresponds with a channel');
 
@@ -132,7 +135,7 @@ define(function() {
       }
     });
     var args = { foo : 'bar' };
-    backfin.on('main', 'loaded', callback, {});
+    backfin.on('loaded', callback, 'main', {});
     backfin.start(TEST_CHANNEL, 'foo', 'bar');
 
     ok(callback.calledWith('foo', 'bar'), 'should pass on the arguments specified to the widget');
