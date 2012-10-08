@@ -11,11 +11,19 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandb
   }
 
   Unit.prototype._getTestRunnerPath = function(options) {
-    return (core.getCoreOptions() || {}).testRunnerPath;
+    var result = (core.getCoreOptions() || {}).testRunnerPath;
+    if(!result) {
+      console.warn('no testRunnerPath path define in backfin.configure')
+      return false;
+    }
+    return result;
   };
 
   Unit.prototype.runTest = function(pluginId, testPath){
+    var runnerPath  = this._getTestRunnerPath();
+    if(!runnerPath) return;
     var iframe = document.createElement('iframe');
+    
     $(iframe).on("load", function(){
       var win = iframe.contentWindow;
       var options = _.extend(core.getCoreOptions(), {
@@ -23,11 +31,13 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandb
         manifest : {}
       });
       win.sandbox = new Sandbox(options);
-      win.run(core.getPluginPath() + '/' + pluginId + '/' + testPath);
+      console.log(core.getPluginPath() + '/' + pluginId + '/' + testPath);
+      win.run('/' + core.getPluginPath() + '/' + pluginId + '/' + testPath);
     });
 
     var path = '/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath;
-    iframe.src = this._getTestRunnerPath() + '?bust=' + Date.now();
+    iframe.src = runnerPath + '?bust=' + Date.now();
+    console.log(iframe.src);
     core.trigger('plugin:test', pluginId, iframe);
   };
   
