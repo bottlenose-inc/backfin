@@ -20,7 +20,7 @@ define('backfin-core', function() {
   var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
-  var WIDGETS_PATH = '../../../plugins'; // Path to widgets
+  var PLUGIN_PATH = '/plugins'; // Path to widgets
 
  
   // The bind method is used for callbacks.
@@ -105,24 +105,35 @@ define('backfin-core', function() {
   }
 
   function _normalizeEvents(manifest) {
-    var events = [];
+    var _events = [];
     Object.keys(manifest.events || {}).forEach(function(key) {
-      events = events.concat(manifest.events[key].map(function(e){
+      _events = _events.concat(manifest.events[key].map(function(e){
         e.eventType = key;
         return e;
       }));
     });
-    return events;
+    return _events;
+  }
+
+  core.registerModule = function(module) {
+
   }
 
   // Get the widgets path
-  core.getWidgetsPath = function() {
-    return WIDGETS_PATH;
+  core.getPluginPath = function() {
+    var requireConfig = require.s.contexts._.config;
+    var pluginPath = PLUGIN_PATH;
+
+    if (requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
+      pluginPath = requireConfig.paths.widgets;
+    }
+    return pluginPath;
   };
 
   core.config = function(options) {
     var ids = [], styles = [];
     coreOptions = options;
+    manifests = {};
     (coreOptions.manifests || []).forEach(function(manifest){
       manifests[manifest.id] = manifest;
       if(manifest.builtIn) {
@@ -153,14 +164,16 @@ define('backfin-core', function() {
 
   // Subscribe to an event
   //
-  // * **param:** {string} subscriber Channel name
+
   // * **param:** {string} event Event name
   // * **param:** {function} callback Module callback
+  // * **param:** {string} subscriber subscriber name
   // * **param:** {object} context Context in which to execute the module
-  core.on = function(subscriber, event, callback, context) {
-    if (event === undefined || callback === undefined || context === undefined) {
-      throw new Error('Channel, callback, and context must be defined');
+  core.on = function(event, callback, subscriber, context) {
+    if (event === undefined || callback === undefined) {
+      throw new Error('Channel, callback, and must be defined');
     }
+    subscriber = subscriber || 'backfin';
     if (typeof subscriber !== 'string') {
       throw new Error('Subscriber must be a string');
     }
@@ -190,7 +203,7 @@ define('backfin-core', function() {
     if (channel === undefined) throw new Error('Channel must be defined');
     if (typeof channel !== 'string') throw new Error('Channel must be a string');
 
-    if (isWidgetLoading) { // Catch publish event!
+    if (['plugin:error'].indexOf(channel) == -1 && isWidgetLoading) { // Catch publish event!
       publishQueue.push(arguments);
       return false;
     }
@@ -270,14 +283,8 @@ define('backfin-core', function() {
 
     function load(channel, args) {
       var dfd = new $.Deferred();
-      var widgetsPath = core.getWidgetsPath();
-      var requireConfig = require.s.contexts._.config;
+      var widgetsPath = core.getPluginPath();
       var manifest = manifests[channel];
-
-      if (requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
-        widgetsPath = requireConfig.paths.widgets;
-      }
-
       coreOptions.clearError && coreOptions.clearError();
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
@@ -301,8 +308,7 @@ define('backfin-core', function() {
           main.apply(null, [sandbox].concat(args));
           if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
         } catch (e) { 
-
-          core.onError(e, channel);
+          core.trigger('plugin:error', channel, e);
         }
         try {
           if(manifest.events) {
@@ -325,11 +331,9 @@ define('backfin-core', function() {
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          if(coreOptions.onError) {
-            coreOptions.onError(failedId, lastGlobalError || err);
-          } else {
-            console.warn('failed to load ' + failedId); 
-          }
+          console.log(core);
+          core.trigger('plugin:error', failedId, lastGlobalError || err);
+          console.warn('failed to load ' + failedId); 
         }
         dfd.reject();
       });
@@ -351,6 +355,10 @@ define('backfin-core', function() {
 
     return promises.length == 1 ? promises[0] : promises;
   };
+
+  core.getCoreOptions = function(){
+    return coreOptions;
+  }
 
   // Unload a widget (collection of modules) by passing in a named reference
   // to the channel/widget. This will both locate and reset the internal
@@ -418,30 +426,18 @@ define('backfin-core', function() {
   core.unload = function(channel) {
     var key;
     var contextMap = require.s.contexts._.defined;
-
     for (key in contextMap) {
       if (contextMap.hasOwnProperty(key) && key.indexOf(channel) !== -1) {
         require.undef(key);
       }
     }
-    var requireConfig = require.s.contexts._.config;
-    var widgetsPath = this.getWidgetsPath();
-    if(requireConfig.paths && requireConfig.paths.hasOwnProperty('widgets')) {
-      widgetsPath = requireConfig.paths.widgets;
-    }
+    var widgetsPath = this.getPluginPath();
     require.undef(widgetsPath + '/' + channel + '/main');
   };
 
   core.getEvents = function() {
     return events;
   };
-
-  core.onError = function(err, channel) {
-    if(coreOptions && coreOptions.onError) {
-      return coreOptions.onError(channel, err);
-    }
-    console.error('plugin :' + channel + '\n' + err.stack);
-  }
 
   core.getActivePlugins = function(args){
     var results = [], key, plugin;
@@ -470,7 +466,7 @@ define('backfin-core', function() {
     return _manifests.filter(function(manifest){
       //every return true if they all passes
       return keys.every(function(key) {
-        return manifest[key] == args[key];
+        return manifest[key] == options[key];
       })
     });
   }
@@ -482,7 +478,7 @@ define('backfin-core', function() {
 
   core.registerEventHook = function(eventId, addCallback, removeCallback) {
     eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
-        
+   
     var _events = [];
     this.getManifests().forEach(function(manifest){
       if(!manifest.builtIn) return;
@@ -503,16 +499,14 @@ define('backfin-core', function() {
 
   return core;
 });
-define('backfin-hotswap', ['backfin-core'], function(backfin){
+define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, unit){
 
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
     options.server =  options.server || 'localhost';
     this.options = options;
-    if(window.location.href.indexOf('local') != -1) {
-      this._connect();
-    }
+    if(window.location.href.indexOf('local') != -1) this._connect();
     this.busyFiles = {};
   }
 
@@ -530,15 +524,27 @@ define('backfin-hotswap', ['backfin-core'], function(backfin){
   }
 
   Hotswap.prototype._getRootPath = function(key) {
-    return key.replace('/plugins/', '').replace(/\/[^/]*$/, '').replace('/', '');
+    return key.replace('/' + backfin.getPluginPath() + '/', '').replace(/\/[^/]*$/, '').replace('/', '');
   }
 
   Hotswap.prototype._processFileChanges = function(filePath) {
     if(this.busyFiles[filePath]) {
       return setTimeout(function() { this._processFileChanges(filePath) }.bind(this), 100);
     }
-    this.busyFiles[filePath] = true;
+
     var possiblePluginId = this._getRootPath(filePath);
+    
+    var manifest = backfin.getManifestById(possiblePluginId);
+    if(manifest && manifest.tests) {
+      var testPath = filePath.replace('/' +possiblePluginId + '/', '');
+      console.log(testPath);
+      if(manifest.tests.indexOf(testPath) != -1) {
+        unit.runTest(possiblePluginId, testPath);
+        return;
+      }
+    }
+    this.busyFiles[filePath] = true;
+
     var plugin = null;
     backfin.getActivePlugins().forEach(function(activePlugin) {
       if(possiblePluginId.indexOf(activePlugin.id) == 0) {
@@ -687,7 +693,7 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
   // * **param:** {string} channel Event name
   // * **param:** {object} callback Module
   Sandbox.prototype.on = function(eventName, callback, context) {
-    mediator.on(this.channel, eventName, callback, context || this);
+    mediator.on(eventName, callback, this.channel, context || this);
   }
 
   // * **param:** {string} channel Event name
@@ -715,4 +721,47 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
   };
 
   return Sandbox;
+});
+// ## Sandbox
+// Implements the sandbox pattern and set up an standard interface for modules.
+// This is a subset of the mediator functionality.
+//
+// Note: Handling permissions/security is optional here
+// The permissions check can be removed
+// to just use the mediator directly.
+define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandbox) {
+  function Unit() {
+    
+  }
+
+  Unit.prototype._getTestRunnerPath = function(options) {
+    var result = (core.getCoreOptions() || {}).testRunnerPath;
+    if(!result) {
+      console.warn('no testRunnerPath path define in backfin.configure')
+      return false;
+    }
+    return result;
+  };
+
+  Unit.prototype.runTest = function(pluginId, testPath){
+    var runnerPath  = this._getTestRunnerPath();
+    if(!runnerPath) return;
+    var iframe = document.createElement('iframe');
+    
+    $(iframe).on("load", function(){
+      var win = iframe.contentWindow;
+      var options = _.extend(core.getCoreOptions(), {
+        channel : pluginId, 
+        manifest : {}
+      });
+      win.sandbox = new Sandbox(options);
+      win.run('/' + core.getPluginPath() + '/' + pluginId + '/' + testPath);
+    });
+
+    var path = '/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath;
+    iframe.src = runnerPath + '?bust=' + Date.now();
+    core.trigger('plugin:test', pluginId, iframe);
+  };
+  
+  return new Unit();
 });
