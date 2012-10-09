@@ -27,7 +27,7 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandb
     $(iframe).on("load", function(){
       var win = iframe.contentWindow;
       var options = _.extend(core.getCoreOptions(), {
-        channel : 'authoring', 
+        channel : pluginId, 
         manifest : {}
       });
       win.sandbox = new Sandbox(options);
