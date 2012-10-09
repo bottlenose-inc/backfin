@@ -31,13 +31,11 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandb
         manifest : {}
       });
       win.sandbox = new Sandbox(options);
-      console.log(core.getPluginPath() + '/' + pluginId + '/' + testPath);
       win.run('/' + core.getPluginPath() + '/' + pluginId + '/' + testPath);
     });
 
     var path = '/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath;
     iframe.src = runnerPath + '?bust=' + Date.now();
-    console.log(iframe.src);
     core.trigger('plugin:test', pluginId, iframe);
   };
   
