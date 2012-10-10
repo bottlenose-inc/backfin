@@ -289,7 +289,6 @@ define('backfin-core', function() {
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
-
       require(paths, function(Sandbox, main, manifestText) {
 
         manifest =  manifest || JSON.parse(manifestText || '{}');

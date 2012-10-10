@@ -36,10 +36,9 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     var manifest = backfin.getManifestById(possiblePluginId);
     if(manifest && manifest.tests) {
       var testPath = filePath.replace('/' +possiblePluginId + '/', '');
-      console.log(testPath);
       if(manifest.tests.indexOf(testPath) != -1) {
-        unit.runTest(possiblePluginId, testPath);
-        return;
+        var iframe = unit.runTest(possiblePluginId, testPath);
+        return backfin.trigger('plugin:test', possiblePluginId, iframe);
       }
     }
     this.busyFiles[filePath] = true;
