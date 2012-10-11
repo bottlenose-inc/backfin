@@ -26,13 +26,14 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(backfin, Sa
   },
 
   Unit.prototype.runTest = function(pluginId, testPath, options){
+    options = options || (options = {});
     var runnerPath  = this._getTestRunnerPath();
     if(!runnerPath) return;
-    var iframe = options.iframe || document.createElement('iframe');
-    console.log(options,iframe);
+    var iframe =  options.iframe || document.createElement('iframe');
     $(iframe).on("load", function(){
+      console.log('loaded');
       var win = iframe.contentWindow;
-      var options = _.extend(backfin.getCoreOptions(), {
+      var args = _.extend(backfin.getCoreOptions(), {
         channel : pluginId, 
         manifest : {}
       });
@@ -40,12 +41,13 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(backfin, Sa
       if(!win.backfinUnit) {
         console.error('Test runner is not configured correctly backfinUnit is not available')
       } else {
+        console.log(options);
         if(options.onProgress) win.backfinUnit.onProgress = options.onProgress;
         if(options.onDone) win.backfinUnit.onDone = options.onDone;
         if(options.onBegin) win.backfinUnit.onBegin = options.onBegin;
       }
       
-      win.sandbox = new Sandbox(options);
+      win.sandbox = new Sandbox(args);
       win.run('/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath);
     });
 
