@@ -31,7 +31,6 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(backfin, Sa
     if(!runnerPath) return;
     var iframe =  options.iframe || document.createElement('iframe');
     $(iframe).on("load", function(){
-      console.log('loaded');
       var win = iframe.contentWindow;
       var args = _.extend(backfin.getCoreOptions(), {
         channel : pluginId, 
@@ -41,7 +40,6 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(backfin, Sa
       if(!win.backfinUnit) {
         console.error('Test runner is not configured correctly backfinUnit is not available')
       } else {
-        console.log(options);
         if(options.onProgress) win.backfinUnit.onProgress = options.onProgress;
         if(options.onDone) win.backfinUnit.onDone = options.onDone;
         if(options.onBegin) win.backfinUnit.onBegin = options.onBegin;
