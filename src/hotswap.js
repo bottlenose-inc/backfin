@@ -26,26 +26,26 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     return key.replace('/' + backfin.getPluginPath() + '/', '').replace(/\/[^/]*$/, '').replace('/', '');
   }
 
-  Hotswap.prototype._processFileChanges = function(filePath) {
+  Hotswap.prototype._processFileChanges = function(filePath, data) {
     if(this.busyFiles[filePath]) {
       return setTimeout(function() { this._processFileChanges(filePath) }.bind(this), 100);
     }
-
-    var possiblePluginId = this._getRootPath(filePath);
+    //the pluginId is always set as far i can tell, in all correct uses atleast
+    var pluginId =  data.pluginId;
     
-    var manifest = backfin.getManifestById(possiblePluginId);
+    var manifest = backfin.getManifestById(pluginId);
     if(manifest && manifest.tests) {
-      var testPath = filePath.replace('/' +possiblePluginId + '/', '');
+      var testPath = filePath.replace('/' +pluginId + '/', '');
       if(manifest.tests.indexOf(testPath) != -1) {
-        var iframe = unit.runTest(possiblePluginId, testPath);
-        return backfin.trigger('plugin:test', possiblePluginId, iframe);
+        var iframe = unit.runTest(pluginId, testPath);
+        return backfin.trigger('plugin:test', pluginId, iframe);
       }
     }
     this.busyFiles[filePath] = true;
 
     var plugin = null;
     backfin.getActivePlugins().forEach(function(activePlugin) {
-      if(possiblePluginId.indexOf(activePlugin.id) == 0) {
+      if(pluginId.indexOf(activePlugin.id) == 0) {
         plugin = activePlugin;
       }   
     });
@@ -59,25 +59,26 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
       console.log("Reloading existing plugin: ", plugin.id);
       this._reloadPlugin(plugin.id);
     } else {
-      console.log("Starting fresh newly detected plugin: ", possiblePluginId);
-      this._reloadPlugin(possiblePluginId);
+      console.log("Starting fresh newly detected plugin: ", pluginId);
+      this._reloadPlugin(pluginId);
     }
     this.busyFiles[filePath] = false;
   }
 
-  Hotswap.prototype._handleResponse = function(res) {
+  Hotswap.prototype._handleResponse = function(res) { 
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {
       Object.keys(res.less).forEach(function(key){
         less.refresh();
       });
     }
+
     if(res.plugins) {
       try {
         Object.keys(res.plugins).forEach(function(key) {
           if(key.match(/\.swp$/)) return;
           if(key.match(/\~$/)) return;
-          this._processFileChanges(key);
+          this._processFileChanges(key, res.plugins[key]);
         }.bind(this));
       } catch(e) {
         console.warn(e.stack);
