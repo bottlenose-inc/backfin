@@ -5,6 +5,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     options.rootPath =  options.rootPath || 'js/';
     options.server =  options.server || 'localhost';
     this.options = options;
+    this._increaseTimeout = 0;
     if(window.location.href.indexOf('local') != -1) this._connect();
     this.busyFiles = {};
   }
@@ -16,10 +17,18 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
        contentType : 'application/json',
        type : 'GET'
     });
+    var self = this;
     def.then(function(res){
-      this._connect();
-      this._handleResponse(res);
-    }.bind(this), this._connect.bind(this)); 
+      self._increaseTimeout = 0;
+      self._connect();
+      self._handleResponse(res);
+    }, function(){
+      self._increaseTimeout++;
+      if(self._increaseTimeout > 20) {
+        self._increaseTimeout = 20;
+      }
+      setTimeout(self._connect.bind(self), self._increaseTimeout * 500);
+    }); 
   }
 
   Hotswap.prototype._getRootPath = function(key) {
