@@ -4,6 +4,9 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
     options.server =  options.server || 'localhost';
+    
+    this.pluginsMap = {};
+
     this.options = options;
     this._increaseTimeout = 0;
     if(window.location.href.indexOf('local') != -1) this._connect();
@@ -116,8 +119,30 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
+    
+    
+    if(!this.pluginsMap[pluginId]){
+      this.pluginsMap[pluginId] = {};
+    }
+    var cacheMap = this.pluginsMap[pluginId];
     backfin.stop(pluginId);
+
+    var contextMap = require.s.contexts._.defined;
+    for (key in contextMap) {
+      if (contextMap.hasOwnProperty(key) && key.indexOf(pluginId) !== -1) {
+        cacheMap[key] = true;
+      }
+    }
+    
     backfin.unload(pluginId);
+    //when you make a syntax bug, in some nested plugin module, 
+    //we need to be very explicit about the files we undef
+    //therefor before we reload any plugin we build a cache of all 
+    //the dependencies the module have so we can undef all them later
+    Object.keys(cacheMap).forEach(function(path){
+      requirejs.undef(path)
+    });
+
     backfin.start(pluginId,  { hotswap : true });
   }
 

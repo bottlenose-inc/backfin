@@ -289,7 +289,6 @@ define('backfin-core', function() {
 
       var paths = ['backfin-sandbox', widgetsPath + '/' + channel + '/main'];
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
-
       require(paths, function(Sandbox, main, manifestText) {
 
         manifest =  manifest || JSON.parse(manifestText || '{}');
@@ -505,7 +504,11 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
     options.server =  options.server || 'localhost';
+    
+    this.pluginsMap = {};
+
     this.options = options;
+    this._increaseTimeout = 0;
     if(window.location.href.indexOf('local') != -1) this._connect();
     this.busyFiles = {};
   }
@@ -517,37 +520,44 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
        contentType : 'application/json',
        type : 'GET'
     });
+    var self = this;
     def.then(function(res){
-      this._connect();
-      this._handleResponse(res);
-    }.bind(this), this._connect.bind(this)); 
+      self._increaseTimeout = 0;
+      self._connect();
+      self._handleResponse(res);
+    }, function(){
+      self._increaseTimeout++;
+      if(self._increaseTimeout > 20) {
+        self._increaseTimeout = 20;
+      }
+      setTimeout(self._connect.bind(self), self._increaseTimeout * 500);
+    }); 
   }
 
   Hotswap.prototype._getRootPath = function(key) {
     return key.replace('/' + backfin.getPluginPath() + '/', '').replace(/\/[^/]*$/, '').replace('/', '');
   }
 
-  Hotswap.prototype._processFileChanges = function(filePath) {
+  Hotswap.prototype._processFileChanges = function(filePath, data) {
     if(this.busyFiles[filePath]) {
       return setTimeout(function() { this._processFileChanges(filePath) }.bind(this), 100);
     }
-
-    var possiblePluginId = this._getRootPath(filePath);
+    //the pluginId is always set as far i can tell, in all correct uses atleast
+    var pluginId =  data.pluginId;
     
-    var manifest = backfin.getManifestById(possiblePluginId);
+    var manifest = backfin.getManifestById(pluginId);
     if(manifest && manifest.tests) {
-      var testPath = filePath.replace('/' +possiblePluginId + '/', '');
-      console.log(testPath);
+      var testPath = filePath.replace('/' +pluginId + '/', '');
       if(manifest.tests.indexOf(testPath) != -1) {
-        unit.runTest(possiblePluginId, testPath);
-        return;
+        var iframe = unit.runTest(pluginId, testPath);
+        return backfin.trigger('plugin:test', pluginId, iframe);
       }
     }
     this.busyFiles[filePath] = true;
 
     var plugin = null;
     backfin.getActivePlugins().forEach(function(activePlugin) {
-      if(possiblePluginId.indexOf(activePlugin.id) == 0) {
+      if(pluginId.indexOf(activePlugin.id) == 0) {
         plugin = activePlugin;
       }   
     });
@@ -561,25 +571,26 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
       console.log("Reloading existing plugin: ", plugin.id);
       this._reloadPlugin(plugin.id);
     } else {
-      console.log("Starting fresh newly detected plugin: ", possiblePluginId);
-      this._reloadPlugin(possiblePluginId);
+      console.log("Starting fresh newly detected plugin: ", pluginId);
+      this._reloadPlugin(pluginId);
     }
     this.busyFiles[filePath] = false;
   }
 
-  Hotswap.prototype._handleResponse = function(res) {
+  Hotswap.prototype._handleResponse = function(res) { 
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {
       Object.keys(res.less).forEach(function(key){
         less.refresh();
       });
     }
+
     if(res.plugins) {
       try {
         Object.keys(res.plugins).forEach(function(key) {
           if(key.match(/\.swp$/)) return;
           if(key.match(/\~$/)) return;
-          this._processFileChanges(key);
+          this._processFileChanges(key, res.plugins[key]);
         }.bind(this));
       } catch(e) {
         console.warn(e.stack);
@@ -608,8 +619,30 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
+    
+    
+    if(!this.pluginsMap[pluginId]){
+      this.pluginsMap[pluginId] = {};
+    }
+    var cacheMap = this.pluginsMap[pluginId];
     backfin.stop(pluginId);
+
+    var contextMap = require.s.contexts._.defined;
+    for (key in contextMap) {
+      if (contextMap.hasOwnProperty(key) && key.indexOf(pluginId) !== -1) {
+        cacheMap[key] = true;
+      }
+    }
+    
     backfin.unload(pluginId);
+    //when you make a syntax bug, in some nested plugin module, 
+    //we need to be very explicit about the files we undef
+    //therefor before we reload any plugin we build a cache of all 
+    //the dependencies the module have so we can undef all them later
+    Object.keys(cacheMap).forEach(function(path){
+      requirejs.undef(path)
+    });
+
     backfin.start(pluginId,  { hotswap : true });
   }
 
@@ -729,13 +762,13 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
 // Note: Handling permissions/security is optional here
 // The permissions check can be removed
 // to just use the mediator directly.
-define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandbox) {
+define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(backfin, Sandbox) {
   function Unit() {
-    
+    backfin.on('run-test', this._handleRunTest.bind(this));
   }
 
   Unit.prototype._getTestRunnerPath = function(options) {
-    var result = (core.getCoreOptions() || {}).testRunnerPath;
+    var result = (backfin.getCoreOptions() || {}).testRunnerPath;
     if(!result) {
       console.warn('no testRunnerPath path define in backfin.configure')
       return false;
@@ -743,24 +776,39 @@ define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(core, Sandb
     return result;
   };
 
-  Unit.prototype.runTest = function(pluginId, testPath){
+  Unit.prototype._handleRunTest = function(options) {
+    var pluginId = options.pluginId;
+    var testPath = options.testPath;
+    this.runTest(pluginId, testPath, options);
+  },
+
+  Unit.prototype.runTest = function(pluginId, testPath, options){
+    options = options || (options = {});
     var runnerPath  = this._getTestRunnerPath();
     if(!runnerPath) return;
-    var iframe = document.createElement('iframe');
-    
+    var iframe =  options.iframe || document.createElement('iframe');
     $(iframe).on("load", function(){
       var win = iframe.contentWindow;
-      var options = _.extend(core.getCoreOptions(), {
+      var args = _.extend(backfin.getCoreOptions(), {
         channel : pluginId, 
         manifest : {}
       });
-      win.sandbox = new Sandbox(options);
-      win.run('/' + core.getPluginPath() + '/' + pluginId + '/' + testPath);
+
+      if(!win.backfinUnit) {
+        console.error('Test runner is not configured correctly backfinUnit is not available')
+      } else {
+        if(options.onProgress) win.backfinUnit.onProgress = options.onProgress;
+        if(options.onDone) win.backfinUnit.onDone = options.onDone;
+        if(options.onBegin) win.backfinUnit.onBegin = options.onBegin;
+      }
+      
+      win.sandbox = new Sandbox(args);
+      win.run('/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath);
     });
 
     var path = '/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath;
     iframe.src = runnerPath + '?bust=' + Date.now();
-    core.trigger('plugin:test', pluginId, iframe);
+    return iframe;
   };
   
   return new Unit();
