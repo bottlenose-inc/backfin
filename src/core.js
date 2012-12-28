@@ -216,6 +216,7 @@ define('backfin-core', function() {
       try {
         events[channel][i]['callback'].apply(this, args);
       } catch (e) {
+        console.warn("Plugin callback error. Channel="+channel);
         console.error(e.stack);
       }
     }
