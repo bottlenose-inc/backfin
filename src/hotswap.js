@@ -63,8 +63,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     });
 
     if(filePath.match(/\.less/)) {
-      this.busyFiles[filePath] = false;
-      return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
+      return;
     }
 
     if(plugin) {
@@ -96,25 +95,6 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
         console.warn(e.stack);
       }
     }
-  }
-
-  Hotswap.prototype._reloadPluginStyles = function(pluginId, stylePath) {
-    var headNode = requirejs.s.head;
-    var link = document.getElementById(stylePath);
-    if(link) {
-      link.href = stylePath + '?bust=' + Date.now();
-      less.refresh();
-      return;
-    }
-
-    var link = document.createElement('link');
-    link.id = stylePath;
-    link.setAttribute('rel', 'stylesheet/less');
-    link.setAttribute('type', 'text/css');
-    link.href = stylePath;
-    headNode.appendChild(link);
-    less.sheets.push(link);
-    less.refresh();
   }
 
   Hotswap.prototype._reloadPlugin = function(pluginId) {
