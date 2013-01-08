@@ -79,9 +79,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
   Hotswap.prototype._handleResponse = function(res) { 
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {
-      Object.keys(res.less).forEach(function(key){
-        less.refresh();
-      });
+      less.refresh(); 
     }
 
     if(res.plugins) {
