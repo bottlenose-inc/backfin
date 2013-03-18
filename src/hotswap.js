@@ -10,6 +10,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     this.options = options;
     this._increaseTimeout = 0;
     if(window.location.href.indexOf('local') != -1) this._connect();
+    if(window.location.href.indexOf('staging.bottlenose.com') != -1) this._connect();
     this.busyFiles = {};
   }
 
