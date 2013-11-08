@@ -300,16 +300,25 @@ define('backfin-core', function() {
           manifest : manifest
         });
 
-        try {
+        function _load(){
           if(plugins[channel]) core.stop(channel);
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
           //if hotswap we take the args from the manifest if any
           main.apply(null, [sandbox].concat(args));
           if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
-        } catch (e) { 
-          core.trigger('plugin:error', channel, e);
         }
+
+        if (coreOptions.environment == 'development') {
+          _load();
+        } else {
+          try {
+           _load();
+          } catch (e) { 
+            core.trigger('plugin:error', channel, e);
+          }
+        }
+
         try {
           if(manifest.events) {
             //normalizing the hash object
@@ -331,8 +340,10 @@ define('backfin-core', function() {
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          console.log(core);
-          core.trigger('plugin:error', failedId, lastGlobalError || err);
+          console.error(err.stack);
+          if (coreOptions.environment != 'development') {
+            core.trigger('plugin:error', failedId, lastGlobalError || err);
+          }
           console.warn('failed to load ' + failedId); 
         }
         dfd.reject();
