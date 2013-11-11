@@ -1,4 +1,4 @@
-define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, unit){
+define('backfin-hotswap', ['backfin-core', 'backfin-unit', 'require-tree'], function(backfin, unit){
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
