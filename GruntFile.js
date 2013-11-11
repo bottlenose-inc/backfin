@@ -20,19 +20,20 @@ module.exports = function(grunt) {
     },
     concat: {
       dist: {
-        src: ['src/**'],
+        src: ['src/*'],
         dest: 'dist/backfin.js'
       }
     }
   });
   
   // Load tasks from "grunt-sample" grunt plugin installed via Npm.
-  grunt.loadNpmTasks('grunt-contrib');
   grunt.loadNpmTasks('grunt-requirejs');
+  grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-bump');
   
   // Build task
-  grunt.registerTask('build', 'clean concat');
+  grunt.registerTask('build', ['clean', 'concat']);
   
   // Custom tasks
   grunt.registerTask('wait', 'Wait forever.', function() {

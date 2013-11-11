@@ -1,4 +1,3 @@
-console.log(123);
 // ## Core
 // Implements the mediator pattern and
 // encapsulates the core functionality for this application.
@@ -217,6 +216,7 @@ define('backfin-core', function() {
       try {
         events[channel][i]['callback'].apply(this, args);
       } catch (e) {
+        console.warn("Plugin callback error. Channel="+channel);
         console.error(e.stack);
       }
     }
@@ -300,16 +300,25 @@ define('backfin-core', function() {
           manifest : manifest
         });
 
-        try {
+        function _load(){
           if(plugins[channel]) core.stop(channel);
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
           //if hotswap we take the args from the manifest if any
           main.apply(null, [sandbox].concat(args));
           if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
-        } catch (e) { 
-          core.trigger('plugin:error', channel, e);
         }
+
+        if (coreOptions.environment == 'development') {
+          _load();
+        } else {
+          try {
+           _load();
+          } catch (e) { 
+            core.trigger('plugin:error', channel, e);
+          }
+        }
+
         try {
           if(manifest.events) {
             //normalizing the hash object
@@ -331,8 +340,10 @@ define('backfin-core', function() {
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          console.log(core);
-          core.trigger('plugin:error', failedId, lastGlobalError || err);
+          console.error(err.stack);
+          if (coreOptions.environment != 'development') {
+            core.trigger('plugin:error', failedId, lastGlobalError || err);
+          }
           console.warn('failed to load ' + failedId); 
         }
         dfd.reject();
@@ -500,7 +511,6 @@ define('backfin-core', function() {
   return core;
 });
 define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, unit){
-
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
@@ -511,6 +521,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     this.options = options;
     this._increaseTimeout = 0;
     if(window.location.href.indexOf('local') != -1) this._connect();
+    if(window.location.href.indexOf('staging.bottlenose.com') != -1) this._connect();
     this.busyFiles = {};
   }
 
@@ -564,8 +575,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     });
 
     if(filePath.match(/\.less/)) {
-      this.busyFiles[filePath] = false;
-      return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
+      return;
     }
 
     if(plugin) {
@@ -581,9 +591,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
   Hotswap.prototype._handleResponse = function(res) { 
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {
-      Object.keys(res.less).forEach(function(key){
-        less.refresh();
-      });
+      less.refresh(); 
     }
 
     if(res.plugins) {
@@ -599,33 +607,28 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     }
   }
 
-  Hotswap.prototype._reloadPluginStyles = function(pluginId, stylePath) {
-    var headNode = requirejs.s.head;
-    var link = document.getElementById(stylePath);
-    if(link) {
-      link.href = stylePath + '?bust=' + Date.now();
-      less.refresh();
-      return;
-    }
-
-    var link = document.createElement('link');
-    link.id = stylePath;
-    link.setAttribute('rel', 'stylesheet/less');
-    link.setAttribute('type', 'text/css');
-    link.href = stylePath;
-    headNode.appendChild(link);
-    less.sheets.push(link);
-    less.refresh();
-  }
-
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
-    
     
     if(!this.pluginsMap[pluginId]){
       this.pluginsMap[pluginId] = {};
     }
     var cacheMap = this.pluginsMap[pluginId];
+
+    var tree = window.rtree.tree;
+    var treeKeys = Object.keys(window.rtree.tree);
+    var affectedPlugins = [];
+    treeKeys.forEach(function(key){
+      if (tree[key].deps.indexOf(key) != -1) {
+        
+        affectedPlugins.push(key);
+      }
+    });
+
+    if (affectedPlugins.length) {
+      console.log('Affected Plugins ', affectedPlugins);
+    }
+
     backfin.stop(pluginId);
 
     var contextMap = require.s.contexts._.defined;
@@ -654,6 +657,32 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 
 
 
+define(function(){
+  requirejs.onResourceLoad = function (context, map, depMaps) {
+    if (!window.rtree) {
+      window.rtree = {
+        tree: {}
+      };
+    }
+
+    var tree = window.rtree.tree;
+
+    function Node() {
+      this.deps = [];
+    }
+
+    if (!tree[map.name]) {
+      tree[map.name] = new Node();
+    }
+
+    // For a full dependency tree
+    if (depMaps) {
+      for (var i = 0; i < depMaps.length; ++i) {
+        tree[map.name].deps.push(depMaps[i].name);
+      }
+    }
+  };
+});
 // ## Sandbox
 // Implements the sandbox pattern and set up an standard interface for modules.
 // This is a subset of the mediator functionality.
