@@ -1,5 +1,4 @@
 define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, unit){
-
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
@@ -99,11 +98,25 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
     
-    
     if(!this.pluginsMap[pluginId]){
       this.pluginsMap[pluginId] = {};
     }
     var cacheMap = this.pluginsMap[pluginId];
+
+    var tree = window.rtree.tree;
+    var treeKeys = Object.keys(window.rtree.tree);
+    var affectedPlugins = [];
+    treeKeys.forEach(function(key){
+      if (tree[key].deps.indexOf(key) != -1) {
+        
+        affectedPlugins.push(key);
+      }
+    });
+
+    if (affectedPlugins.length) {
+      console.log('Affected Plugins ', affectedPlugins);
+    }
+
     backfin.stop(pluginId);
 
     var contextMap = require.s.contexts._.defined;

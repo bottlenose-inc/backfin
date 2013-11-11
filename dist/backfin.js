@@ -1,3 +1,4 @@
+console.log(123);
 // ## Core
 // Implements the mediator pattern and
 // encapsulates the core functionality for this application.
