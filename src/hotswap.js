@@ -61,17 +61,16 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
         plugin = activePlugin;
       }   
     });
-
     if(filePath.match(/\.less/)) {
       return;
     }
 
     if(plugin) {
       console.log("Reloading existing plugin: ", plugin.id);
-      this._reloadPlugin(plugin.id);
+      this._reloadPlugin(plugin.id, filePath.replace('/', '').replace('.js', ''));
     } else {
       console.log("Starting fresh newly detected plugin: ", pluginId);
-      this._reloadPlugin(pluginId);
+      this._reloadPlugin(pluginId, filePath.replace('/', '').replace('.js', ''));
     }
     this.busyFiles[filePath] = false;
   }
@@ -95,7 +94,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     }
   }
 
-  Hotswap.prototype._reloadPlugin = function(pluginId) {
+  Hotswap.prototype._reloadPlugin = function(pluginId, filePath) {
     if(!pluginId) return false;
     
     if(!this.pluginsMap[pluginId]){
@@ -105,17 +104,23 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 
     var tree = window.rtree.tree;
     var treeKeys = Object.keys(window.rtree.tree);
+    var affectedFiles = [];
     var affectedPlugins = [];
+
     treeKeys.forEach(function(key){
-      if (tree[key].deps.indexOf(key) != -1) {
-        
-        affectedPlugins.push(key);
+      if (tree[key].deps.indexOf('plugins/' + filePath) != -1) {
+        affectedFiles.push(key);
       }
     });
-
-    if (affectedPlugins.length) {
-      console.log('Affected Plugins ', affectedPlugins);
-    }
+    
+    affectedFiles.forEach(function(file) {
+      treeKeys.forEach(function(key) {
+        if (tree[key].deps.indexOf(file) != -1) {
+          affectedPlugins.push(key);
+        }
+      });
+    });
+    
 
     backfin.stop(pluginId);
 
