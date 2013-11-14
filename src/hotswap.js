@@ -98,7 +98,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
-    
+    var context = backfin.getContext(pluginId);
     
     if(!this.pluginsMap[pluginId]){
       this.pluginsMap[pluginId] = {};
@@ -122,7 +122,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
       requirejs.undef(path)
     });
 
-    backfin.start(pluginId,  { hotswap : true });
+    backfin.start(pluginId,  { hotswap : true, context: context });
   }
 
   return Hotswap;

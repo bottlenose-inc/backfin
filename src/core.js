@@ -223,7 +223,7 @@ define('backfin-core', function() {
     return true;
   };
 
-  core.triggerPluginEvent = function(plugin, event) {
+  core.triggerPluginEvent = function(plugin, event, options) {
     var args = [].slice.call(arguments, 2), i, l;
     if(!events[event]) return;
     for (i = 0, l = events[event].length; i < l; i += 1) {
@@ -258,9 +258,13 @@ define('backfin-core', function() {
   // * **param:** {Object/Array} an array with objects or single object containing channel and element
   core.start = function(list) {
     var args = [].slice.call(arguments, 1);
-    var hotswap;
+    var hotswap, context;
     if(args[0] && args[0].hotswap) {
       hotswap = true;
+    }
+    
+    if(args[0] && args[0].context) {
+      context = args[0].context;
     }
     
     // Allow pair channel & element as params 
@@ -306,7 +310,7 @@ define('backfin-core', function() {
           plugins[channel] = sandbox;
           //if hotswap we take the args from the manifest if any
           main.apply(null, [sandbox].concat(args));
-          if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
+          if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap', context);
         }
 
         if (coreOptions.environment == 'development') {
@@ -385,7 +389,7 @@ define('backfin-core', function() {
       console.warn('backfin: Plugin not found', channel);
       return false;
     }
-
+    
     plugin._registeredViews.forEach(function(view){
       view && view.destroy ? view.destroy() : view.remove();
     });
@@ -414,6 +418,23 @@ define('backfin-core', function() {
     }
 
     delete plugins[channel];
+  };
+
+  // Get the context of a widget (collection of modules) to be passed on
+  // to next instance after hotswap
+  //
+  // * **param:** {string} channel Event name
+  // * **param:** {string} el Element name
+  core.getContext = function(channel) {
+    var file = decamelize(channel);
+
+    var plugin = plugins[channel];
+    if(!plugin) {
+      console.warn('backfin: Plugin not found', channel);
+      return false;
+    }
+
+    return plugin.hotswapContext;
   };
 
   // Undefine/unload a module, resetting the internal state of it in require.js
