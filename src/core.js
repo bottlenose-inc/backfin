@@ -211,13 +211,11 @@ define('backfin-core', function() {
     var i, l;
     var args = [].slice.call(arguments, 1);
     if (!events[channel]) return false;
-    
     for (i = 0, l = events[channel].length; i < l; i += 1) {
       try {
         events[channel][i]['callback'].apply(this, args);
       } catch (e) {
-        console.warn("Plugin callback error. Channel="+channel);
-        console.error(e.stack);
+        core.trigger('plugin:error', channel, { error: e, args: args });
       }
     }
     return true;
