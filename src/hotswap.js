@@ -57,10 +57,10 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     this.busyFiles[filePath] = true;
 
     var plugin = null;
-    backfin.getActivePlugins().forEach(function(activePlugin) {
-      if(pluginId.indexOf(activePlugin.id) == 0) {
+    backfin.getActivePlugins().some(function(activePlugin) {
+      if(pluginId == activePlugin.id) {
         plugin = activePlugin;
-      }   
+      }
     });
 
     if(filePath.match(/\.less/)) {
