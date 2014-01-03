@@ -5,6 +5,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     options.rootPath =  options.rootPath || 'js/';
     options.server =  options.server || 'localhost';
     
+
     this.pluginsMap = {};
 
     this.options = options;
@@ -15,29 +16,40 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
   }
 
   Hotswap.prototype._connect = function() {
-    var start = new Date();
-    var def = $.ajax({
-       url: 'http://localhost:8077/update.json',
-       contentType : 'application/json',
-       type : 'GET'
-    });
+    clearInterval(this._statusInterval);
+    // Create a socket instance
+    var socket = new WebSocket('ws://localhost');
     var self = this;
-    def.then(function(res){
-      self._increaseTimeout = 0;
-      self._connect();
-      self._handleResponse(res);
-    }, function(){
-      self._increaseTimeout++;
-      if(self._increaseTimeout > 20) {
-        self._increaseTimeout = 20;
+    // Open the socket
+    socket.onopen = function() {
+      // Listen for messages
+      socket.onmessage = function(e) {
+        var data = {};
+        try {
+          data = JSON.parse(e.data);
+        } catch(e) {}
+
+        if (data.type == 'hotswap') {
+          self._processFileChanges(data.path, data);
+        }
+      };
+      // Listen for socket closes
+      socket.onclose = function() {
+        setTimeout(self._connect.bind(self), 1000);
+      };
+    };
+
+    this._statusInterval = setInterval(function(){
+      if (socket.readyState === undefined || socket.readyState > 1) {
+        socket.close();  
+        self._connect();
       }
-      setTimeout(self._connect.bind(self), self._increaseTimeout * 500);
-    }); 
-  }
+    }, 1000); 
+  };
 
   Hotswap.prototype._getRootPath = function(key) {
     return key.replace('/' + backfin.getPluginPath() + '/', '').replace(/\/[^/]*$/, '').replace('/', '');
-  }
+  };
 
   Hotswap.prototype._processFileChanges = function(filePath, data) {
     if(this.busyFiles[filePath]) {
@@ -57,10 +69,10 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     this.busyFiles[filePath] = true;
 
     var plugin = null;
-    backfin.getActivePlugins().some(function(activePlugin) {
+    backfin.getActivePlugins().forEach(function(activePlugin) {
       if(pluginId == activePlugin.id) {
         plugin = activePlugin;
-      }
+      }   
     });
 
     if(filePath.match(/\.less/)) {
@@ -86,8 +98,6 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     if(res.plugins) {
       try {
         Object.keys(res.plugins).forEach(function(key) {
-          if(key.match(/\.swp$/)) return;
-          if(key.match(/\~$/)) return;
           this._processFileChanges(key, res.plugins[key]);
         }.bind(this));
       } catch(e) {
@@ -128,6 +138,3 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
   return Hotswap;
 
 });
-
-
-
