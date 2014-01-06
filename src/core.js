@@ -409,7 +409,7 @@ define('backfin-core', function() {
       if (events.hasOwnProperty(ch)) {
         for (var i = 0; i < events[ch].length; i++) {
           if (events[ch][i].subscriber === channel) {
-            events[ch].splice(i);
+            events[ch].splice(i, 1);
           }
         }
       }
