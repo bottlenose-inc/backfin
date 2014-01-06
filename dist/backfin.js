@@ -211,18 +211,17 @@ define('backfin-core', function() {
     var i, l;
     var args = [].slice.call(arguments, 1);
     if (!events[channel]) return false;
-    
     for (i = 0, l = events[channel].length; i < l; i += 1) {
       try {
         events[channel][i]['callback'].apply(this, args);
       } catch (e) {
-        console.error(e.stack);
+        core.trigger('plugin:error', channel, { error: e, args: args });
       }
     }
     return true;
   };
 
-  core.triggerPluginEvent = function(plugin, event) {
+  core.triggerPluginEvent = function(plugin, event, options) {
     var args = [].slice.call(arguments, 2), i, l;
     if(!events[event]) return;
     for (i = 0, l = events[event].length; i < l; i += 1) {
@@ -257,9 +256,13 @@ define('backfin-core', function() {
   // * **param:** {Object/Array} an array with objects or single object containing channel and element
   core.start = function(list) {
     var args = [].slice.call(arguments, 1);
-    var hotswap;
+    var hotswap, context;
     if(args[0] && args[0].hotswap) {
       hotswap = true;
+    }
+    
+    if(args[0] && args[0].context) {
+      context = args[0].context;
     }
     
     // Allow pair channel & element as params 
@@ -299,16 +302,25 @@ define('backfin-core', function() {
           manifest : manifest
         });
 
-        try {
+        function _load(){
           if(plugins[channel]) core.stop(channel);
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
           //if hotswap we take the args from the manifest if any
           main.apply(null, [sandbox].concat(args));
-          if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
-        } catch (e) { 
-          core.trigger('plugin:error', channel, e);
+          if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap', context);
         }
+
+        if (coreOptions.environment == 'development') {
+          _load();
+        } else {
+          try {
+           _load();
+          } catch (e) { 
+            core.trigger('plugin:error', channel, e);
+          }
+        }
+
         try {
           if(manifest.events) {
             //normalizing the hash object
@@ -330,8 +342,10 @@ define('backfin-core', function() {
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          console.log(core);
-          core.trigger('plugin:error', failedId, lastGlobalError || err);
+          console.error(err.stack);
+          if (coreOptions.environment != 'development') {
+            core.trigger('plugin:error', failedId, lastGlobalError || err);
+          }
           console.warn('failed to load ' + failedId); 
         }
         dfd.reject();
@@ -373,7 +387,7 @@ define('backfin-core', function() {
       console.warn('backfin: Plugin not found', channel);
       return false;
     }
-
+    
     plugin._registeredViews.forEach(function(view){
       view && view.destroy ? view.destroy() : view.remove();
     });
@@ -402,6 +416,23 @@ define('backfin-core', function() {
     }
 
     delete plugins[channel];
+  };
+
+  // Get the context of a widget (collection of modules) to be passed on
+  // to next instance after hotswap
+  //
+  // * **param:** {string} channel Event name
+  // * **param:** {string} el Element name
+  core.getContext = function(channel) {
+    var file = decamelize(channel);
+
+    var plugin = plugins[channel];
+    if(!plugin) {
+      console.warn('backfin: Plugin not found', channel);
+      return false;
+    }
+
+    return plugin.hotswapContext;
   };
 
   // Undefine/unload a module, resetting the internal state of it in require.js
@@ -510,6 +541,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     this.options = options;
     this._increaseTimeout = 0;
     if(window.location.href.indexOf('local') != -1) this._connect();
+    if(window.location.href.indexOf('staging.bottlenose.com') != -1) this._connect();
     this.busyFiles = {};
   }
 
@@ -556,15 +588,14 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     this.busyFiles[filePath] = true;
 
     var plugin = null;
-    backfin.getActivePlugins().forEach(function(activePlugin) {
-      if(pluginId.indexOf(activePlugin.id) == 0) {
+    backfin.getActivePlugins().some(function(activePlugin) {
+      if(pluginId == activePlugin.id) {
         plugin = activePlugin;
-      }   
+      }
     });
 
     if(filePath.match(/\.less/)) {
-      this.busyFiles[filePath] = false;
-      return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
+      return;
     }
 
     if(plugin) {
@@ -580,9 +611,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
   Hotswap.prototype._handleResponse = function(res) { 
     //xxx not perfect should allow for css to reload as well
     if(res.less && Object.keys(res.less) && window.less) {
-      Object.keys(res.less).forEach(function(key){
-        less.refresh();
-      });
+      less.refresh(); 
     }
 
     if(res.plugins) {
@@ -598,28 +627,9 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     }
   }
 
-  Hotswap.prototype._reloadPluginStyles = function(pluginId, stylePath) {
-    var headNode = requirejs.s.head;
-    var link = document.getElementById(stylePath);
-    if(link) {
-      link.href = stylePath + '?bust=' + Date.now();
-      less.refresh();
-      return;
-    }
-
-    var link = document.createElement('link');
-    link.id = stylePath;
-    link.setAttribute('rel', 'stylesheet/less');
-    link.setAttribute('type', 'text/css');
-    link.href = stylePath;
-    headNode.appendChild(link);
-    less.sheets.push(link);
-    less.refresh();
-  }
-
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
-    
+    var context = backfin.getContext(pluginId);
     
     if(!this.pluginsMap[pluginId]){
       this.pluginsMap[pluginId] = {};
@@ -643,7 +653,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
       requirejs.undef(path)
     });
 
-    backfin.start(pluginId,  { hotswap : true });
+    backfin.start(pluginId,  { hotswap : true, context: context });
   }
 
   return Hotswap;
@@ -653,6 +663,79 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 
 
 
+// Usage:
+// Put this in a separate file and load it as the first module
+// (See https://github.com/jrburke/requirejs/wiki/Internal-API:-onResourceLoad)
+// Methods available after page load:
+// rtree.map()
+// - Fills out every module's map property under rtree.tree.
+// - Print out rtree.tree in the console to see their map property.
+// rtree.toUml()
+// - Prints out a UML string that can be used to generate UML
+// - UML Website: http://yuml.me/diagram/scruffy/class/draw
+    requirejs.onResourceLoad = function (context, map, depMaps) {
+        if (!window.rtree) {
+            window.rtree = {
+                tree: {},
+                map: function() {
+                    for (var key in this.tree) {
+                        if (this.tree.hasOwnProperty(key)) {
+                            var val = this.tree[key];
+                            for (var i =0; i < val.deps.length; ++i) {
+                                var dep = val.deps[i];
+                                val.map[dep] = this.tree[dep];
+                            }
+                        }
+                    }
+                },
+                toUml: function() {
+                    var uml = [];
+     
+                    for (var key in this.tree) {
+                        if (this.tree.hasOwnProperty(key)) {
+                            var val = this.tree[key];
+                            for (var i = 0; i < val.deps.length; ++i) {
+                                uml.push("[" + key + "]->[" + val.deps[i] + "]");
+                            }
+                        }
+                    }
+     
+                    return uml.join("\n");
+                }
+            };
+        }
+     
+        var tree = window.rtree.tree;
+     
+        function Node() {
+            this.deps = [];
+            this.map = {};
+        }
+     
+        if (!tree[map.name]) {
+            tree[map.name] = new Node();
+        }
+     
+        // For a full dependency tree
+        if (depMaps) {
+            for (var i = 0; i < depMaps.length; ++i) {
+                tree[map.name].deps.push(depMaps[i].name);
+            }
+        }
+     
+    // For a simple dependency tree
+     
+    //    if (map.parentMap && map.parentMap.name) {
+    //        if (!tree[map.parentMap.name]) {
+    //            tree[map.parentMap.name] = new Node();
+    //        }
+    //
+    //        if (map.parentMap.name !== map.name) {
+    //            tree[map.parentMap.name].deps.push(map.name);
+    //        }
+    //    }
+        
+    };
 // ## Sandbox
 // Implements the sandbox pattern and set up an standard interface for modules.
 // This is a subset of the mediator functionality.
