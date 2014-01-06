@@ -30,7 +30,11 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
         } catch(e) {}
 
         if (data.type == 'hotswap') {
-          self._processFileChanges(data.path, data);
+          if (data.path.match(/\.less$/)) {
+            less.refresh();
+          } else if (data.pluginId) {
+            self._processFileChanges(data.path, data);
+          }
         }
       };
       // Listen for socket closes
@@ -89,22 +93,6 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     this.busyFiles[filePath] = false;
   }
 
-  Hotswap.prototype._handleResponse = function(res) { 
-    //xxx not perfect should allow for css to reload as well
-    if(res.less && Object.keys(res.less) && window.less) {
-      less.refresh(); 
-    }
-
-    if(res.plugins) {
-      try {
-        Object.keys(res.plugins).forEach(function(key) {
-          this._processFileChanges(key, res.plugins[key]);
-        }.bind(this));
-      } catch(e) {
-        console.warn(e.stack);
-      }
-    }
-  }
 
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
