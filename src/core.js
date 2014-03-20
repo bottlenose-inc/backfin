@@ -22,7 +22,7 @@ define('backfin-core', function() {
   var isWidgetLoading = false;
   var PLUGIN_PATH = '/plugins'; // Path to widgets
 
- 
+
   // The bind method is used for callbacks.
   //
   // * (bind)[https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind]
@@ -43,32 +43,9 @@ define('backfin-core', function() {
       return bound;
     };
   }
-  
+
   var lastGlobalError;
 
-  function globalErrorlogger(message, url, line){
-    var clientErr;
-    if(message instanceof Error) {
-      clientErr = message;
-    } if(typeof(message) == 'string' && typeof(url) == 'string' && typeof(line) == 'number') {
-      clientErr = new Error(message);
-      clientErr.stack = 'File : ' + url + '\nline : ' + line;
-    }
-    lastGlobalError = clientErr;
-  }
-
-  function enableGlobalErrorLogger() {
-    if(!window.onerror) {
-      window.onerror = globalErrorlogger;
-    }
-  }
-
-  function disableGlobalErrorLogger() {
-    if(window.onerror ==  globalErrorlogger) {
-      window.onerror = null;
-    }
-    globalErrorlogger = null;
-  }
 
   // Uncomment if using zepto
   // Deferred.installInto($);
@@ -87,12 +64,12 @@ define('backfin-core', function() {
 
   function _removeEventHook(type, event) {
     (eventHooks[type] || []).forEach(function(obj){
-      var index = obj.eventsIds.indexOf(event.id)
+      var index = obj.eventsIds.indexOf(event.id);
       if(index != -1) {
         obj.eventsIds.splice(index, 1);
         obj.removeCallback && obj.removeCallback(event);
       }
-    })
+    });
   }
 
   function _addEventHook(type, event) {
@@ -101,7 +78,7 @@ define('backfin-core', function() {
         obj.eventsIds.push(event.id);
         obj.addCallback && obj.addCallback(event);
       }
-    })
+    });
   }
 
   function _normalizeEvents(manifest) {
@@ -117,7 +94,7 @@ define('backfin-core', function() {
 
   core.registerModule = function(module) {
 
-  }
+  };
 
   // Get the widgets path
   core.getPluginPath = function() {
@@ -143,8 +120,8 @@ define('backfin-core', function() {
         });
       }
     });
-    core._injectStyles(styles)
-    core.start(ids.map(function(id){ return { id : id } }));
+    core._injectStyles(styles);
+    return core.start(ids.map(function(id){ return { id : id }; }));
   };
 
   core._injectStyles = function(styles) {
@@ -160,7 +137,7 @@ define('backfin-core', function() {
       less.sheets.push(link);
     });
     less.refresh();
-  }
+  };
 
   // Subscribe to an event
   //
@@ -213,7 +190,7 @@ define('backfin-core', function() {
     if (!events[channel]) return false;
     for (i = 0, l = events[channel].length; i < l; i += 1) {
       try {
-        events[channel][i]['callback'].apply(this, args);
+        events[channel][i].callback.apply(this, args);
       } catch (e) {
         core.trigger('plugin:error', channel, { error: e, args: args });
       }
@@ -226,16 +203,16 @@ define('backfin-core', function() {
     if(!events[event]) return;
     for (i = 0, l = events[event].length; i < l; i += 1) {
       if(events[event][i].subscriber == plugin) {
-        events[event][i]['callback'].apply(this, args);
+        events[event][i].callback.apply(this, args);
       }
     }
     return true;
-  }
+  };
 
 
   // Empty the list with all stored publish events.
   core.emptyPublishQueue = function() {
-    var args, i, len;
+    var i, len;
     isWidgetLoading = false;
 
     for (i = 0, len = publishQueue.length; i < len; i++) {
@@ -260,19 +237,19 @@ define('backfin-core', function() {
     if(args[0] && args[0].hotswap) {
       hotswap = true;
     }
-    
+
     if(args[0] && args[0].context) {
       context = args[0].context;
     }
-    
-    // Allow pair channel & element as params 
+
+    // Allow pair channel & element as params
     if (typeof list === 'string') {
       list = [{
         id : list,
         options : args
       }];
     }
-    
+
     // Allow a single object as param
     if (isObject(list) && !Array.isArray(list)) list = [list];
 
@@ -294,11 +271,12 @@ define('backfin-core', function() {
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
       require(paths, function(Sandbox, main, manifestText) {
 
+
         manifest =  manifest || JSON.parse(manifestText || '{}');
         manifest.id = channel;
-        
+
         var options = _.extend(coreOptions, {
-          channel : channel, 
+          channel : channel,
           manifest : manifest
         });
 
@@ -316,7 +294,7 @@ define('backfin-core', function() {
         } else {
           try {
            _load();
-          } catch (e) { 
+          } catch (e) {
             core.trigger('plugin:error', channel, e);
           }
         }
@@ -346,7 +324,7 @@ define('backfin-core', function() {
           if (coreOptions.environment != 'development') {
             core.trigger('plugin:error', failedId, lastGlobalError || err);
           }
-          console.warn('failed to load ' + failedId); 
+          console.warn('failed to load ' + failedId);
         }
         dfd.reject();
       });
@@ -361,17 +339,17 @@ define('backfin-core', function() {
       promises.push(load(id, plugin.options));
     }
 
-    enableGlobalErrorLogger();
+    var def = $.Deferred();
     $.when.apply($, promises).done(core.emptyPublishQueue).always(function(){
-      disableGlobalErrorLogger();
+      def.resolve();
     });
 
-    return promises.length == 1 ? promises[0] : promises;
+    return def;
   };
 
   core.getCoreOptions = function(){
     return coreOptions;
-  }
+  };
 
   // Unload a widget (collection of modules) by passing in a named reference
   // to the channel/widget. This will both locate and reset the internal
@@ -380,20 +358,19 @@ define('backfin-core', function() {
   // * **param:** {string} channel Event name
   // * **param:** {string} el Element name
   core.stop = function(channel) {
-    var file = decamelize(channel);
 
     var plugin = plugins[channel];
     if(!plugin) {
       console.warn('backfin: Plugin not found', channel);
       return false;
     }
-    
+
     plugin._registeredViews.forEach(function(view){
       view && view.destroy ? view.destroy() : view.remove();
     });
 
     plugin._registeredModels.forEach(function(model){
-      model && model.destroy && model.destroy(); 
+      model && model.destroy && model.destroy();
     });
     core.triggerPluginEvent(channel, 'plugin:destroy');
 
@@ -424,8 +401,6 @@ define('backfin-core', function() {
   // * **param:** {string} channel Event name
   // * **param:** {string} el Element name
   core.getContext = function(channel) {
-    var file = decamelize(channel);
-
     var plugin = plugins[channel];
     if(!plugin) {
       console.warn('backfin: Plugin not found', channel);
@@ -476,16 +451,16 @@ define('backfin-core', function() {
         plugin = plugins[key];
         results.push({
           manifest : plugin.manifest,
-          id : key, 
-          views : plugin._registeredViews, 
+          id : key,
+          views : plugin._registeredViews,
           models : plugins._registeredModels });
       }
     }
     return results;
-  }
+  };
 
   core.getManifests = function(options){
-    var _manifests = []
+    var _manifests = [];
     Object.keys(manifests).forEach(function(key){
       _manifests.push(manifests[key]);
     });
@@ -497,34 +472,34 @@ define('backfin-core', function() {
       //every return true if they all passes
       return keys.every(function(key) {
         return manifest[key] == options[key];
-      })
+      });
     });
-  }
+  };
 
 
   core.getManifestById = function(id) {
     return manifests[id];
-  }
+  };
 
   core.registerEventHook = function(eventId, addCallback, removeCallback) {
     eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
-   
+
     var _events = [];
     this.getManifests().forEach(function(manifest){
       if(!manifest.builtIn) return;
-      _events = _events.concat(_normalizeEvents(manifest)); 
+      _events = _events.concat(_normalizeEvents(manifest));
     });
-    
+
     _events.forEach(function(e){
       if(e.eventType == eventId) addCallback(e);
     });
 
     eventHooks[eventId].push({
-      eventsIds : _events.map(function(e){ return e.id }),
-      addCallback : addCallback, 
-      removeCallback : removeCallback 
+      eventsIds : _events.map(function(e){ return e.id; }),
+      addCallback : addCallback,
+      removeCallback : removeCallback
     });
-  }
+  };
 
 
   return core;
