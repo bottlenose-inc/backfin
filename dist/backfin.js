@@ -20,9 +20,9 @@ define('backfin-core', function() {
   var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
-  var PLUGIN_PATH = '/plugins'; // Path to widgets
+  var PLUGIN_PATH = 'plugins'; // Path to widgets
 
- 
+
   // The bind method is used for callbacks.
   //
   // * (bind)[https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind]
@@ -43,32 +43,9 @@ define('backfin-core', function() {
       return bound;
     };
   }
-  
+
   var lastGlobalError;
 
-  function globalErrorlogger(message, url, line){
-    var clientErr;
-    if(message instanceof Error) {
-      clientErr = message;
-    } if(typeof(message) == 'string' && typeof(url) == 'string' && typeof(line) == 'number') {
-      clientErr = new Error(message);
-      clientErr.stack = 'File : ' + url + '\nline : ' + line;
-    }
-    lastGlobalError = clientErr;
-  }
-
-  function enableGlobalErrorLogger() {
-    if(!window.onerror) {
-      window.onerror = globalErrorlogger;
-    }
-  }
-
-  function disableGlobalErrorLogger() {
-    if(window.onerror ==  globalErrorlogger) {
-      window.onerror = null;
-    }
-    globalErrorlogger = null;
-  }
 
   // Uncomment if using zepto
   // Deferred.installInto($);
@@ -87,12 +64,12 @@ define('backfin-core', function() {
 
   function _removeEventHook(type, event) {
     (eventHooks[type] || []).forEach(function(obj){
-      var index = obj.eventsIds.indexOf(event.id)
+      var index = obj.eventsIds.indexOf(event.id);
       if(index != -1) {
         obj.eventsIds.splice(index, 1);
         obj.removeCallback && obj.removeCallback(event);
       }
-    })
+    });
   }
 
   function _addEventHook(type, event) {
@@ -101,7 +78,7 @@ define('backfin-core', function() {
         obj.eventsIds.push(event.id);
         obj.addCallback && obj.addCallback(event);
       }
-    })
+    });
   }
 
   function _normalizeEvents(manifest) {
@@ -117,7 +94,7 @@ define('backfin-core', function() {
 
   core.registerModule = function(module) {
 
-  }
+  };
 
   // Get the widgets path
   core.getPluginPath = function() {
@@ -143,12 +120,13 @@ define('backfin-core', function() {
         });
       }
     });
-    core._injectStyles(styles)
-    core.start(ids.map(function(id){ return { id : id } }));
+    core._injectStyles(styles);
+    return;
   };
 
   core._injectStyles = function(styles) {
     if(!window.less) return;
+    var less = window.less;
     styles.forEach(function(style){
       var path = '/plugins' + '/' + style.path;
       var link = document.createElement('link');
@@ -156,11 +134,10 @@ define('backfin-core', function() {
       link.setAttribute('rel', 'stylesheet/less');
       link.setAttribute('type', 'text/css');
       link.href = path;
-      document.head.appendChild(link);
       less.sheets.push(link);
     });
     less.refresh();
-  }
+  };
 
   // Subscribe to an event
   //
@@ -211,32 +188,31 @@ define('backfin-core', function() {
     var i, l;
     var args = [].slice.call(arguments, 1);
     if (!events[channel]) return false;
-    
     for (i = 0, l = events[channel].length; i < l; i += 1) {
       try {
-        events[channel][i]['callback'].apply(this, args);
+        events[channel][i].callback.apply(this, args);
       } catch (e) {
-        console.error(e.stack);
+        core.trigger('plugin:error', channel, { error: e, args: args });
       }
     }
     return true;
   };
 
-  core.triggerPluginEvent = function(plugin, event) {
+  core.triggerPluginEvent = function(plugin, event, options) {
     var args = [].slice.call(arguments, 2), i, l;
     if(!events[event]) return;
     for (i = 0, l = events[event].length; i < l; i += 1) {
       if(events[event][i].subscriber == plugin) {
-        events[event][i]['callback'].apply(this, args);
+        events[event][i].callback.apply(this, args);
       }
     }
     return true;
-  }
+  };
 
 
   // Empty the list with all stored publish events.
   core.emptyPublishQueue = function() {
-    var args, i, len;
+    var i, len;
     isWidgetLoading = false;
 
     for (i = 0, len = publishQueue.length; i < len; i++) {
@@ -257,19 +233,23 @@ define('backfin-core', function() {
   // * **param:** {Object/Array} an array with objects or single object containing channel and element
   core.start = function(list) {
     var args = [].slice.call(arguments, 1);
-    var hotswap;
+    var hotswap, context;
     if(args[0] && args[0].hotswap) {
       hotswap = true;
     }
-    
-    // Allow pair channel & element as params 
+
+    if(args[0] && args[0].context) {
+      context = args[0].context;
+    }
+
+    // Allow pair channel & element as params
     if (typeof list === 'string') {
       list = [{
         id : list,
         options : args
       }];
     }
-    
+
     // Allow a single object as param
     if (isObject(list) && !Array.isArray(list)) list = [list];
 
@@ -291,24 +271,34 @@ define('backfin-core', function() {
       if(!manifest) paths.push('text!' + widgetsPath + '/' + channel + '/manifest.json');
       require(paths, function(Sandbox, main, manifestText) {
 
+
         manifest =  manifest || JSON.parse(manifestText || '{}');
         manifest.id = channel;
-        
+
         var options = _.extend(coreOptions, {
-          channel : channel, 
+          channel : channel,
           manifest : manifest
         });
 
-        try {
+        function _load(){
           if(plugins[channel]) core.stop(channel);
           var sandbox = new Sandbox(options);
           plugins[channel] = sandbox;
           //if hotswap we take the args from the manifest if any
           main.apply(null, [sandbox].concat(args));
-          if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap');
-        } catch (e) { 
-          core.trigger('plugin:error', channel, e);
+          if(hotswap) core.triggerPluginEvent(channel, 'plugin:hotswap', context);
         }
+
+        if (coreOptions.environment == 'development') {
+          _load();
+        } else {
+          try {
+           _load();
+          } catch (e) {
+            core.trigger('plugin:error', channel, e);
+          }
+        }
+
         try {
           if(manifest.events) {
             //normalizing the hash object
@@ -326,13 +316,20 @@ define('backfin-core', function() {
         if (err.requireType === 'timeout') {
           console.warn('Could not load module ' + err.requireModules);
         } else {
+          if (!err) {
+            return;
+          }
+          console.error(err);
+
           // If a timeout hasn't occurred and there was another module
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          console.log(core);
-          core.trigger('plugin:error', failedId, lastGlobalError || err);
-          console.warn('failed to load ' + failedId); 
+
+          if (coreOptions.environment != 'development') {
+            core.trigger('plugin:error', failedId, lastGlobalError || err);
+          }
+          console.warn('failed to load ' + failedId);
         }
         dfd.reject();
       });
@@ -347,17 +344,17 @@ define('backfin-core', function() {
       promises.push(load(id, plugin.options));
     }
 
-    enableGlobalErrorLogger();
+    var def = $.Deferred();
     $.when.apply($, promises).done(core.emptyPublishQueue).always(function(){
-      disableGlobalErrorLogger();
+      def.resolve();
     });
 
-    return promises.length == 1 ? promises[0] : promises;
+    return def;
   };
 
   core.getCoreOptions = function(){
     return coreOptions;
-  }
+  };
 
   // Unload a widget (collection of modules) by passing in a named reference
   // to the channel/widget. This will both locate and reset the internal
@@ -366,7 +363,6 @@ define('backfin-core', function() {
   // * **param:** {string} channel Event name
   // * **param:** {string} el Element name
   core.stop = function(channel) {
-    var file = decamelize(channel);
 
     var plugin = plugins[channel];
     if(!plugin) {
@@ -379,7 +375,7 @@ define('backfin-core', function() {
     });
 
     plugin._registeredModels.forEach(function(model){
-      model && model.destroy && model.destroy(); 
+      model && model.destroy && model.destroy();
     });
     core.triggerPluginEvent(channel, 'plugin:destroy');
 
@@ -402,6 +398,21 @@ define('backfin-core', function() {
     }
 
     delete plugins[channel];
+  };
+
+  // Get the context of a widget (collection of modules) to be passed on
+  // to next instance after hotswap
+  //
+  // * **param:** {string} channel Event name
+  // * **param:** {string} el Element name
+  core.getContext = function(channel) {
+    var plugin = plugins[channel];
+    if(!plugin) {
+      console.warn('backfin: Plugin not found', channel);
+      return false;
+    }
+
+    return plugin.hotswapContext;
   };
 
   // Undefine/unload a module, resetting the internal state of it in require.js
@@ -445,16 +456,16 @@ define('backfin-core', function() {
         plugin = plugins[key];
         results.push({
           manifest : plugin.manifest,
-          id : key, 
-          views : plugin._registeredViews, 
+          id : key,
+          views : plugin._registeredViews,
           models : plugins._registeredModels });
       }
     }
     return results;
-  }
+  };
 
   core.getManifests = function(options){
-    var _manifests = []
+    var _manifests = [];
     Object.keys(manifests).forEach(function(key){
       _manifests.push(manifests[key]);
     });
@@ -466,77 +477,94 @@ define('backfin-core', function() {
       //every return true if they all passes
       return keys.every(function(key) {
         return manifest[key] == options[key];
-      })
+      });
     });
-  }
+  };
 
 
   core.getManifestById = function(id) {
     return manifests[id];
-  }
+  };
 
   core.registerEventHook = function(eventId, addCallback, removeCallback) {
     eventHooks[eventId] = (eventHooks[eventId] ? eventHooks[eventId] : []);
-   
+
     var _events = [];
     this.getManifests().forEach(function(manifest){
       if(!manifest.builtIn) return;
-      _events = _events.concat(_normalizeEvents(manifest)); 
+      _events = _events.concat(_normalizeEvents(manifest));
     });
-    
+
     _events.forEach(function(e){
       if(e.eventType == eventId) addCallback(e);
     });
 
     eventHooks[eventId].push({
-      eventsIds : _events.map(function(e){ return e.id }),
-      addCallback : addCallback, 
-      removeCallback : removeCallback 
+      eventsIds : _events.map(function(e){ return e.id; }),
+      addCallback : addCallback,
+      removeCallback : removeCallback
     });
-  }
+  };
 
 
   return core;
 });
-define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, unit){
+define('backfin-hotswap', ['backfin-core'], function(backfin, unit){
 
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
     options.server =  options.server || 'localhost';
-    
+
+
     this.pluginsMap = {};
 
     this.options = options;
     this._increaseTimeout = 0;
     if(window.location.href.indexOf('local') != -1) this._connect();
+    if(window.location.href.indexOf('staging.bottlenose.com') != -1) this._connect();
     this.busyFiles = {};
   }
 
   Hotswap.prototype._connect = function() {
-    var start = new Date();
-    var def = $.ajax({
-       url: 'http://localhost:8077/update.json',
-       contentType : 'application/json',
-       type : 'GET'
-    });
+    clearInterval(this._statusInterval);
+    // Create a socket instance
+    var socket = new WebSocket('ws://localhost');
     var self = this;
-    def.then(function(res){
-      self._increaseTimeout = 0;
-      self._connect();
-      self._handleResponse(res);
-    }, function(){
-      self._increaseTimeout++;
-      if(self._increaseTimeout > 20) {
-        self._increaseTimeout = 20;
+    // Open the socket
+    socket.onopen = function() {
+      // Listen for messages
+      socket.onmessage = function(e) {
+        var data = {};
+        try {
+          data = JSON.parse(e.data);
+        } catch(e) {}
+
+        if (data.type == 'hotswap') {
+          if (data.path.match(/\.less$/)) {
+            less.refresh();
+          } else if (data.pluginId) {
+            self._processFileChanges(data.path, data);
+          }
+        }
+      };
+      // Listen for socket closes
+      socket.onclose = function() {
+        setTimeout(self._connect.bind(self), 1000);
+      };
+    };
+
+    this._statusInterval = setInterval(function(){
+      if (socket.readyState === undefined || socket.readyState > 1) {
+        socket.close();
+        self._connect();
       }
-      setTimeout(self._connect.bind(self), self._increaseTimeout * 500);
-    }); 
-  }
+    }, 1000);
+  };
 
   Hotswap.prototype._getRootPath = function(key) {
     return key.replace('/' + backfin.getPluginPath() + '/', '').replace(/\/[^/]*$/, '').replace('/', '');
-  }
+  };
 
   Hotswap.prototype._processFileChanges = function(filePath, data) {
     if(this.busyFiles[filePath]) {
@@ -544,7 +572,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     }
     //the pluginId is always set as far i can tell, in all correct uses atleast
     var pluginId =  data.pluginId;
-    
+
     var manifest = backfin.getManifestById(pluginId);
     if(manifest && manifest.tests) {
       var testPath = filePath.replace('/' +pluginId + '/', '');
@@ -557,14 +585,13 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 
     var plugin = null;
     backfin.getActivePlugins().forEach(function(activePlugin) {
-      if(pluginId.indexOf(activePlugin.id) == 0) {
+      if(pluginId == activePlugin.id) {
         plugin = activePlugin;
-      }   
+      }
     });
 
     if(filePath.match(/\.less/)) {
-      this.busyFiles[filePath] = false;
-      return this._reloadPluginStyles(plugin.id, '/plugins'+filePath);
+      return;
     }
 
     if(plugin) {
@@ -577,50 +604,11 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     this.busyFiles[filePath] = false;
   }
 
-  Hotswap.prototype._handleResponse = function(res) { 
-    //xxx not perfect should allow for css to reload as well
-    if(res.less && Object.keys(res.less) && window.less) {
-      Object.keys(res.less).forEach(function(key){
-        less.refresh();
-      });
-    }
-
-    if(res.plugins) {
-      try {
-        Object.keys(res.plugins).forEach(function(key) {
-          if(key.match(/\.swp$/)) return;
-          if(key.match(/\~$/)) return;
-          this._processFileChanges(key, res.plugins[key]);
-        }.bind(this));
-      } catch(e) {
-        console.warn(e.stack);
-      }
-    }
-  }
-
-  Hotswap.prototype._reloadPluginStyles = function(pluginId, stylePath) {
-    var headNode = requirejs.s.head;
-    var link = document.getElementById(stylePath);
-    if(link) {
-      link.href = stylePath + '?bust=' + Date.now();
-      less.refresh();
-      return;
-    }
-
-    var link = document.createElement('link');
-    link.id = stylePath;
-    link.setAttribute('rel', 'stylesheet/less');
-    link.setAttribute('type', 'text/css');
-    link.href = stylePath;
-    headNode.appendChild(link);
-    less.sheets.push(link);
-    less.refresh();
-  }
 
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
-    
-    
+    var context = backfin.getContext(pluginId);
+
     if(!this.pluginsMap[pluginId]){
       this.pluginsMap[pluginId] = {};
     }
@@ -633,26 +621,95 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
         cacheMap[key] = true;
       }
     }
-    
+
     backfin.unload(pluginId);
-    //when you make a syntax bug, in some nested plugin module, 
+    //when you make a syntax bug, in some nested plugin module,
     //we need to be very explicit about the files we undef
-    //therefor before we reload any plugin we build a cache of all 
+    //therefor before we reload any plugin we build a cache of all
     //the dependencies the module have so we can undef all them later
     Object.keys(cacheMap).forEach(function(path){
       requirejs.undef(path)
     });
 
-    backfin.start(pluginId,  { hotswap : true });
+    backfin.start(pluginId,  { hotswap : true, context: context });
   }
 
   return Hotswap;
 
 });
-
-
-
-
+// Usage:
+// Put this in a separate file and load it as the first module
+// (See https://github.com/jrburke/requirejs/wiki/Internal-API:-onResourceLoad)
+// Methods available after page load:
+// rtree.map()
+// - Fills out every module's map property under rtree.tree.
+// - Print out rtree.tree in the console to see their map property.
+// rtree.toUml()
+// - Prints out a UML string that can be used to generate UML
+// - UML Website: http://yuml.me/diagram/scruffy/class/draw
+    requirejs.onResourceLoad = function (context, map, depMaps) {
+        if (!window.rtree) {
+            window.rtree = {
+                tree: {},
+                map: function() {
+                    for (var key in this.tree) {
+                        if (this.tree.hasOwnProperty(key)) {
+                            var val = this.tree[key];
+                            for (var i =0; i < val.deps.length; ++i) {
+                                var dep = val.deps[i];
+                                val.map[dep] = this.tree[dep];
+                            }
+                        }
+                    }
+                },
+                toUml: function() {
+                    var uml = [];
+     
+                    for (var key in this.tree) {
+                        if (this.tree.hasOwnProperty(key)) {
+                            var val = this.tree[key];
+                            for (var i = 0; i < val.deps.length; ++i) {
+                                uml.push("[" + key + "]->[" + val.deps[i] + "]");
+                            }
+                        }
+                    }
+     
+                    return uml.join("\n");
+                }
+            };
+        }
+     
+        var tree = window.rtree.tree;
+     
+        function Node() {
+            this.deps = [];
+            this.map = {};
+        }
+     
+        if (!tree[map.name]) {
+            tree[map.name] = new Node();
+        }
+     
+        // For a full dependency tree
+        if (depMaps) {
+            for (var i = 0; i < depMaps.length; ++i) {
+                tree[map.name].deps.push(depMaps[i].name);
+            }
+        }
+     
+    // For a simple dependency tree
+     
+    //    if (map.parentMap && map.parentMap.name) {
+    //        if (!tree[map.parentMap.name]) {
+    //            tree[map.parentMap.name] = new Node();
+    //        }
+    //
+    //        if (map.parentMap.name !== map.name) {
+    //            tree[map.parentMap.name].deps.push(map.name);
+    //        }
+    //    }
+        
+    };
 // ## Sandbox
 // Implements the sandbox pattern and set up an standard interface for modules.
 // This is a subset of the mediator functionality.
@@ -662,64 +719,11 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 // to just use the mediator directly.
 define('backfin-sandbox',['backfin-core'], function(mediator) {
   "use strict";
-  
+
   function Sandbox(options) {
     options = options || {};
     this.channel = options.channel;
     this.manifest = options.manifest;
-    
-    var self = this;
-    var registerView = this.registerView.bind(this),
-        registerModel = this.registerModel.bind(this);
-    
-    this._registeredViews = [];
-    this._registeredModels = [];
-
-    this.views = {};
-    this.models = {};
-
-    this.View = Backbone.View.extend({
-      constructor : function(options){
-        this.cid = _.uniqueId('view');
-        this._configure(options || {});
-        this._ensureElement();
-        this.initialize && this.initialize.apply(this, arguments);
-        this.delegateEvents();
-        this.el.className = this.className;
-        registerView(this);
-      }
-    });
-
-    this.Model = Backbone.Model.extend({
-      constructor : function(){
-        registerModel(this);
-        this.initialize && this.initialize.apply(this, arguments);
-      }
-    });
-
-    function configure(registerFn, object) {
-      return object.extend({
-        constructor : function(){
-          registerFn(this);
-          this.initialize && this.initialize.apply(this, arguments);
-        }
-      });
-    }
-    
-    Object.keys(options).forEach(function(key){
-      switch(key) {
-        case 'models':
-          Object.keys(options.models || {}).forEach(function(k) {
-            self.models[k] = configure(registerModel, options.models[k]);
-          });
-        break;
-        case 'views' :
-          Object.keys(options.views || {}).forEach(function(k) {
-            self.views[k] = configure(registerView, options.views[k]);
-          });
-        break;
-      }
-    });
   }
 
   // * **param:** {string} subscriber Module name
@@ -745,71 +749,5 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
     mediator.stop.apply(mediator, arguments);
   };
 
-  Sandbox.prototype.registerView = function(view) {
-    this._registeredViews.push(view);
-  };
-
-  Sandbox.prototype.registerModel = function(model) {
-    this._registeredModels.push(model);
-  };
-
   return Sandbox;
-});
-// ## Sandbox
-// Implements the sandbox pattern and set up an standard interface for modules.
-// This is a subset of the mediator functionality.
-//
-// Note: Handling permissions/security is optional here
-// The permissions check can be removed
-// to just use the mediator directly.
-define('backfin-unit', ['backfin-core', 'backfin-sandbox'], function(backfin, Sandbox) {
-  function Unit() {
-    backfin.on('run-test', this._handleRunTest.bind(this));
-  }
-
-  Unit.prototype._getTestRunnerPath = function(options) {
-    var result = (backfin.getCoreOptions() || {}).testRunnerPath;
-    if(!result) {
-      console.warn('no testRunnerPath path define in backfin.configure')
-      return false;
-    }
-    return result;
-  };
-
-  Unit.prototype._handleRunTest = function(options) {
-    var pluginId = options.pluginId;
-    var testPath = options.testPath;
-    this.runTest(pluginId, testPath, options);
-  },
-
-  Unit.prototype.runTest = function(pluginId, testPath, options){
-    options = options || (options = {});
-    var runnerPath  = this._getTestRunnerPath();
-    if(!runnerPath) return;
-    var iframe =  options.iframe || document.createElement('iframe');
-    $(iframe).on("load", function(){
-      var win = iframe.contentWindow;
-      var args = _.extend(backfin.getCoreOptions(), {
-        channel : pluginId, 
-        manifest : {}
-      });
-
-      if(!win.backfinUnit) {
-        console.error('Test runner is not configured correctly backfinUnit is not available')
-      } else {
-        if(options.onProgress) win.backfinUnit.onProgress = options.onProgress;
-        if(options.onDone) win.backfinUnit.onDone = options.onDone;
-        if(options.onBegin) win.backfinUnit.onBegin = options.onBegin;
-      }
-      
-      win.sandbox = new Sandbox(args);
-      win.run('/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath);
-    });
-
-    var path = '/' + backfin.getPluginPath() + '/' + pluginId + '/' + testPath;
-    iframe.src = runnerPath + '?bust=' + Date.now();
-    return iframe;
-  };
-  
-  return new Unit();
 });
