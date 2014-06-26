@@ -20,7 +20,7 @@ define('backfin-core', function() {
   var coreOptions = {};
   var publishQueue = [];
   var isWidgetLoading = false;
-  var PLUGIN_PATH = '/plugins'; // Path to widgets
+  var PLUGIN_PATH = 'plugins'; // Path to widgets
 
 
   // The bind method is used for callbacks.
@@ -316,11 +316,16 @@ define('backfin-core', function() {
         if (err.requireType === 'timeout') {
           console.warn('Could not load module ' + err.requireModules);
         } else {
+          if (!err) {
+            return;
+          }
+          console.error(err);
+
           // If a timeout hasn't occurred and there was another module
           // related error, unload the module then throw an error
           var failedId = err.requireModules && err.requireModules[0];
           require.undef(failedId);
-          console.error(err.stack);
+
           if (coreOptions.environment != 'development') {
             core.trigger('plugin:error', failedId, lastGlobalError || err);
           }
