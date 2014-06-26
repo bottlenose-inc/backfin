@@ -121,11 +121,12 @@ define('backfin-core', function() {
       }
     });
     core._injectStyles(styles);
-    return core.start(ids.map(function(id){ return { id : id }; }));
+    return;
   };
 
   core._injectStyles = function(styles) {
     if(!window.less) return;
+    var less = window.less;
     styles.forEach(function(style){
       var path = '/plugins' + '/' + style.path;
       var link = document.createElement('link');
@@ -133,8 +134,6 @@ define('backfin-core', function() {
       link.setAttribute('rel', 'stylesheet/less');
       link.setAttribute('type', 'text/css');
       link.href = path;
-
-      //document.getElementsByTagName('head')[0].appendChild(link);
       less.sheets.push(link);
     });
     less.refresh();
