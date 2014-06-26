@@ -1,10 +1,10 @@
-define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, unit){
+define('backfin-hotswap', ['backfin-core'], function(backfin, unit){
 
   function Hotswap(options) {
     options || (options = {});
     options.rootPath =  options.rootPath || 'js/';
     options.server =  options.server || 'localhost';
-    
+
 
     this.pluginsMap = {};
 
@@ -45,10 +45,10 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
 
     this._statusInterval = setInterval(function(){
       if (socket.readyState === undefined || socket.readyState > 1) {
-        socket.close();  
+        socket.close();
         self._connect();
       }
-    }, 1000); 
+    }, 1000);
   };
 
   Hotswap.prototype._getRootPath = function(key) {
@@ -61,7 +61,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     }
     //the pluginId is always set as far i can tell, in all correct uses atleast
     var pluginId =  data.pluginId;
-    
+
     var manifest = backfin.getManifestById(pluginId);
     if(manifest && manifest.tests) {
       var testPath = filePath.replace('/' +pluginId + '/', '');
@@ -76,7 +76,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
     backfin.getActivePlugins().forEach(function(activePlugin) {
       if(pluginId == activePlugin.id) {
         plugin = activePlugin;
-      }   
+      }
     });
 
     if(filePath.match(/\.less/)) {
@@ -97,7 +97,7 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
   Hotswap.prototype._reloadPlugin = function(pluginId) {
     if(!pluginId) return false;
     var context = backfin.getContext(pluginId);
-    
+
     if(!this.pluginsMap[pluginId]){
       this.pluginsMap[pluginId] = {};
     }
@@ -110,11 +110,11 @@ define('backfin-hotswap', ['backfin-core', 'backfin-unit'], function(backfin, un
         cacheMap[key] = true;
       }
     }
-    
+
     backfin.unload(pluginId);
-    //when you make a syntax bug, in some nested plugin module, 
+    //when you make a syntax bug, in some nested plugin module,
     //we need to be very explicit about the files we undef
-    //therefor before we reload any plugin we build a cache of all 
+    //therefor before we reload any plugin we build a cache of all
     //the dependencies the module have so we can undef all them later
     Object.keys(cacheMap).forEach(function(path){
       requirejs.undef(path)

@@ -133,7 +133,8 @@ define('backfin-core', function() {
       link.setAttribute('rel', 'stylesheet/less');
       link.setAttribute('type', 'text/css');
       link.href = path;
-      document.head.appendChild(link);
+
+      //document.getElementsByTagName('head')[0].appendChild(link);
       less.sheets.push(link);
     });
     less.refresh();

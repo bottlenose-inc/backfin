@@ -7,64 +7,11 @@
 // to just use the mediator directly.
 define('backfin-sandbox',['backfin-core'], function(mediator) {
   "use strict";
-  
+
   function Sandbox(options) {
     options = options || {};
     this.channel = options.channel;
     this.manifest = options.manifest;
-    
-    var self = this;
-    var registerView = this.registerView.bind(this),
-        registerModel = this.registerModel.bind(this);
-    
-    this._registeredViews = [];
-    this._registeredModels = [];
-
-    this.views = {};
-    this.models = {};
-
-    this.View = Backbone.View.extend({
-      constructor : function(options){
-        this.cid = _.uniqueId('view');
-        this._configure(options || {});
-        this._ensureElement();
-        this.initialize && this.initialize.apply(this, arguments);
-        this.delegateEvents();
-        this.el.className = this.className;
-        registerView(this);
-      }
-    });
-
-    this.Model = Backbone.Model.extend({
-      constructor : function(){
-        registerModel(this);
-        this.initialize && this.initialize.apply(this, arguments);
-      }
-    });
-
-    function configure(registerFn, object) {
-      return object.extend({
-        constructor : function(){
-          registerFn(this);
-          this.initialize && this.initialize.apply(this, arguments);
-        }
-      });
-    }
-    
-    Object.keys(options).forEach(function(key){
-      switch(key) {
-        case 'models':
-          Object.keys(options.models || {}).forEach(function(k) {
-            self.models[k] = configure(registerModel, options.models[k]);
-          });
-        break;
-        case 'views' :
-          Object.keys(options.views || {}).forEach(function(k) {
-            self.views[k] = configure(registerView, options.views[k]);
-          });
-        break;
-      }
-    });
   }
 
   // * **param:** {string} subscriber Module name
@@ -88,14 +35,6 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
   // * **param:** {string} el Element name
   Sandbox.prototype.stop = function(channel, el) {
     mediator.stop.apply(mediator, arguments);
-  };
-
-  Sandbox.prototype.registerView = function(view) {
-    this._registeredViews.push(view);
-  };
-
-  Sandbox.prototype.registerModel = function(model) {
-    this._registeredModels.push(model);
   };
 
   return Sandbox;
