@@ -11,7 +11,6 @@
 // include 'deferred' if using zepto
 define('backfin-core', function() {
   "use strict";
-
   var core = {}; // Mediator object
   var events = {}; // Loaded modules and their callbacks
   var plugins = {};
@@ -21,7 +20,6 @@ define('backfin-core', function() {
   var publishQueue = [];
   var isWidgetLoading = false;
   var PLUGIN_PATH = 'plugins'; // Path to widgets
-
 
   // The bind method is used for callbacks.
   //
@@ -370,13 +368,6 @@ define('backfin-core', function() {
       return false;
     }
 
-    plugin._registeredViews.forEach(function(view){
-      view && view.destroy ? view.destroy() : view.remove();
-    });
-
-    plugin._registeredModels.forEach(function(model){
-      model && model.destroy && model.destroy();
-    });
     core.triggerPluginEvent(channel, 'plugin:destroy');
 
     var manifest = plugin.manifest;
