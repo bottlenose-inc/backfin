@@ -14,25 +14,19 @@ define('backfin-sandbox',['backfin-core'], function(mediator) {
     this.manifest = options.manifest;
   }
 
-  // * **param:** {string} subscriber Module name
-  // * **param:** {string} channel Event name
-  // * **param:** {object} callback Module
+
   Sandbox.prototype.on = function(eventName, callback, context) {
     mediator.on(eventName, callback, this.channel, context || this);
   }
 
-  // * **param:** {string} channel Event name
   Sandbox.prototype.trigger = function(channel) {
     mediator.trigger.apply(mediator, arguments);
   }
 
-  // * **param:** {Object/Array} an array with objects or single object containing channel and element
   Sandbox.prototype.start = function(list) {
     mediator.start.apply(mediator, arguments);
   }
 
-  // * **param:** {string} channel Event name
-  // * **param:** {string} el Element name
   Sandbox.prototype.stop = function(channel, el) {
     mediator.stop.apply(mediator, arguments);
   };
