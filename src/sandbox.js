@@ -1,4 +1,4 @@
-// ## Sandbox
+// Sandbox
 // Implements the sandbox pattern and set up an standard interface for modules.
 // This is a subset of the mediator functionality.
 //
